@@ -1,20 +1,79 @@
+/*
+ *  (C) 2020, Philipp Stanner, <stanner@posteo.de>
+ *
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
-/* #include <fftw3-mpi.h> */
+#include <fftw3.h>
 #include <stdio.h>
 #include <stdbool.h>
-#include "util.h"
+
+#include "minifftw.h"
 
 static PyObject *Fftw_error = NULL;
 
+// fftw_plan_dft_1d(NUM_POINTS, result, result, FFTW_FORWARD, FFTW_ESTIMATE);
+static PyObject*
+plan_dft_1d(PyObject *self, PyObject *args)
+{
+	Py_complex *input_array = NULL;
+	unsigned long long list_len = 0;
+	int direction, flags;
+	int ret = PyArg_ParseTuple(args, "O!ii", &PyList_Type, &list,
+			&direction, &flags);
+	puts("alive 1");
+	if (!list) return NULL;
+	puts("alive 2");
+	if (ret == 0) return NULL;
 
-static PyObject* parse_complex(PyObject *self, PyObject *args)
+	if (PyList_Check(list) == 0)
+		puts("not a list :(");
+	else {
+		list_len = PyList_Size(list);
+		printf("The list is %lu long.\n", list_len);
+	}
+
+	if (is_complex_list(list))
+		puts("List is complex.");
+	else {
+		puts("list is not complex.");
+	}
+
+	input_array = malloc(list_len * sizeof(Py_complex));
+	if (!input_array) {
+		perror("plan_dft_1d");
+		return Py_None;
+	}
+
+
+	return Py_None;
+}
+
+
+static PyObject*
+parse_complex(PyObject *self, PyObject *args)
 {
 	Py_ssize_t list_len = 0;
 	PyObject *list = NULL;
 	Py_complex *array = NULL;
-
 	puts("alive 0");
+/* 
+ * TODO:
+ * We need to be able to parse the data as np-arrays, not python-lists.
+ */
 	int ret = PyArg_ParseTuple(args, "O!", &PyList_Type, &list);
 	puts("alive 1");
 	if (!list) return NULL;
@@ -45,6 +104,7 @@ static PyObject* parse_complex(PyObject *self, PyObject *args)
 }
 
 
+
 static PyMethodDef Minifftw_methods[] = {
 	{"parse_complex", parse_complex, METH_VARARGS, "Build stuff from bytes"},
 	{NULL, NULL, 0, NULL},
@@ -60,7 +120,8 @@ static struct PyModuleDef fftwmodule = {
 };
 
 	
-PyMODINIT_FUNC PyInit_minifftw(void)
+PyMODINIT_FUNC
+PyInit_minifftw(void)
 {
 	PyObject *m;
 
@@ -76,6 +137,9 @@ PyMODINIT_FUNC PyInit_minifftw(void)
 		Py_DECREF(m);
 		return NULL;
 	}
+	PyModule_AddIntMacro(m, FFTW_FORWARD);
+	PyModule_AddIntMacro(m, FFTW_BACKWARD);
+	PyModule_AddIntMacro(m, FFTW_ESTIMATE);
 
 	return m;
 }
