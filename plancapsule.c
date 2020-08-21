@@ -41,12 +41,10 @@ mfftw_destroy_capsule(PyObject *capsule)
 }
 
 
-static PyObject *
+static inline PyObject *
 mfftw_create_capsule(struct mini_fftw_plan *mplan)
 {
-	PyObject *capsule;
-	capsule = PyCapsule_New((void*)mplan, NULL, mfftw_destroy_capsule);
-	return capsule;
+	return PyCapsule_New((void*)mplan, NULL, mfftw_destroy_capsule);
 }
 
 
