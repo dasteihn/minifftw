@@ -66,3 +66,30 @@ complex_list_to_c_array(PyObject *list)
 
 	return array;
 }
+
+
+int
+fill_fftw_array(PyObject *list, fftw_complex *array, Py_ssize_t total_len)
+{
+	puts("entered fill array");
+	size_t i;
+	PyComplex tmp = {0};
+	PyObject *iter_obj = NULL;
+	PyObject *iterator = PyObject_GetIter(list);
+	if (!iterator || PyIter_Check(iterator) == 0) {
+		puts("is not iterable");
+		return -1;
+	}
+	puts("is iterable");
+
+	for (i = 0; (iter_obj = PyIter_Next(iterator)) && i < total_len; i++) {
+		printf("looping %li\n", i);
+		tmp = PyComplex_AsCComplex(iter_obj);
+		array[MFFTW_REAL] = tmp[MFFTW_REAL];
+		array[MFFTW_IMAG] = tmp[MFFTW_IMAG];
+		Py_DECREF(iter_obj);
+	}
+
+	Py_DECREF(iterator);
+	return 0;
+}

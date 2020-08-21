@@ -44,7 +44,7 @@ allocate_arrays(unsigned long long len, fftw_complex **in_arr, fftw_complex **ou
 }
 
 
-static PyObject*
+static PyObject *
 plan_dft_1d(PyObject *self, PyObject *args)
 {
 	PyObject *list = NULL;
@@ -74,6 +74,25 @@ plan_dft_1d(PyObject *self, PyObject *args)
 
 	plan = fftw_plan_dft_1d(list_len, input_array, output_array, direction, flags);
 	return mfftw_encapsulate_plan(plan, list, input_array, output_array);
+}
+
+
+static PyObject *
+execute(PyObject *self, PyObject *args)
+{
+	mini_fftw_plan *mplan = NULL;
+	PyObject *plancapsule = NULL;
+	int ret = PyArg_ParseTuple(args, "O", &plancapsule);
+	if (ret == 0 || !plancapsule)
+		return NULL;
+	mplan = mfftw_unwrap_capsule(plancapsule);
+	if (!mplan)
+		return NULL;
+
+	if (mfftw_prepare_for_execution(mplan) != 0)
+		return NULL;
+
+	fftw_execute(mplan->plan);
 }
 
 

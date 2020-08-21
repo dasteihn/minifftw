@@ -20,6 +20,7 @@
 #include <stdlib.h>
 #include "minifftw.h"
 
+/* Capsule creation and destruction */
 
 static void
 mfftw_cleanup_plan(struct mini_fftw_plan *plan)
@@ -87,5 +88,43 @@ mfftw_encapsulate_plan(fftw_plan plan, PyObject *orig_list,
 		return PyErr_NoMemory();
 
 	return mfftw_create_capsule(mplan);
+
+}
+
+
+/* 
+ * ========================= Capsule evaluation ===============================
+ */
+
+mini_fftw_plan *
+mfftw_unwrap_capsule(PyObject *mplan)
+{
+	if (PyCapsule_CheckExact(plancapsule) == 0) {
+		PyErr_SetString(PyExc_TypeError, "Expected a capsule.");
+		return NULL;
+	}
+	struct mini_fftw_plan *plan =
+		(struct mini_fftw_plan *)PyCapsule_GetPointer(mplan);
+	// TODO error handling?
+	return plan;
+}
+
+
+int
+mfftw_prepare_for_execution(mini_fftw_plan *mplan)
+{
+	int ret = -1;
+	ret = fill_fftw_array(mplan->orig_list, mplan->input_array, mplan->list_len);
+	if (ret != 0) {
+		PyErr_SetString(PyExc_StopIteration, "Stored data list not iterable.");
+	}
+
+	return ret;
+}
+
+
+PyObject *
+mfftw_complex_list_from_mplan(mini_fftw_plan *mplan)
+{
 
 }
