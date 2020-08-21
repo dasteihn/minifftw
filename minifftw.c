@@ -13,7 +13,7 @@
  * GNU General Public License for more details.
 
  * You should have received a copy of the GNU General Public License
- * along with Minifftw.  If not, see <http://www.gnu.org/licenses/>.
+ * along with Minifftw. If not, see <http://www.gnu.org/licenses/>.
  */
 
 #define PY_SSIZE_T_CLEAN
@@ -43,7 +43,7 @@ allocate_arrays(unsigned long long len, fftw_complex **in_arr, fftw_complex **ou
 	return 0;
 }
 
-// fftw_plan_dft_1d(NUM_POINTS, result, result, FFTW_FORWARD, FFTW_ESTIMATE);
+
 static PyObject*
 plan_dft_1d(PyObject *self, PyObject *args)
 {
@@ -54,18 +54,14 @@ plan_dft_1d(PyObject *self, PyObject *args)
 	int direction, flags;
 	int ret = PyArg_ParseTuple(args, "O!ii", &PyList_Type, &list,
 			&direction, &flags);
-	puts("alive 1");
-	if (!list) return NULL;
-	puts("alive 2");
-	if (ret == 0) return NULL;
+	if (ret == 0 || !list)
+		return NULL;
 
 	if (PyList_Check(list) == 0) {
 		PyErr_SetString(PyExc_TypeError, "Expected a list of complex numbers.");
 		return NULL;
-	} else {
-		list_len = (unsigned long long)PyList_Size(list);
-		printf("The list is %llu long.\n", list_len);
 	}
+	list_len = (unsigned long long)PyList_Size(list);
 
 	if (!is_complex_list(list)) {
 		PyErr_SetString(PyExc_TypeError, "Expected a list of complex numbers.");
