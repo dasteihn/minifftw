@@ -30,8 +30,9 @@ static PyObject *Fftw_error = NULL;
 static PyObject*
 plan_dft_1d(PyObject *self, PyObject *args)
 {
-	PyObject *list = NULL;
-	Py_complex *input_array = NULL;
+	PyObject *list = NULL, *plan_capsule = NULL;
+	fftw_plan plan;
+	fftw_complex *input_array = NULL, *output_array = NULL;
 	unsigned long long list_len = 0;
 	int direction, flags;
 	int ret = PyArg_ParseTuple(args, "O!ii", &PyList_Type, &list,
@@ -52,8 +53,24 @@ plan_dft_1d(PyObject *self, PyObject *args)
 		PyErr_SetString(PyExc_TypeError, "Expected a list of complex numbers.");
 		return NULL;
 	}
+	list_len = PyList_Size(list);
+
+	input_array = calloc(list_len, sizeof(fftw_complex));
+	if (!input_array)
+		goto mem_err_out;
+	output_array = calloc(list_len, sizeof(fftw_complex));
+	if (!output_array)
+		goto mem_err_out;
+
+	plan = fftw_plan_dft_1d(list_len, input_array, output_array, direction, flags);
+	mfftw_create_capsule(plan);
 
 	return Py_None;
+
+mem_err_out:
+	free(input_array);
+	free(output_array);
+	return PyErr_NoMemory;
 }
 
 
