@@ -21,6 +21,7 @@
 
 #include <Python.h>
 #include <fftw3.h>
+#include <stdbool.h>
 
 bool is_complex_list(PyObject *);
 Py_complex* complex_list_to_c_array(PyObject *);

@@ -1,7 +1,8 @@
 from distutils.core import setup, Extension
 import os
 
-module1 = Extension('minifftw', sources = ['extension.c', 'util.c'])
+module1 = Extension('minifftw', sources = ['minifftw.c', 'util.c',
+    'plancapsule.c'])
 
 # Use the mpi-C-Compiler-Wrapper. Setting the environment variable from extern
 # causes awkward behavior.
