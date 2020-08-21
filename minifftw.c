@@ -30,6 +30,7 @@ static PyObject *Fftw_error = NULL;
 static PyObject*
 plan_dft_1d(PyObject *self, PyObject *args)
 {
+	PyObject *list = NULL;
 	Py_complex *input_array = NULL;
 	unsigned long long list_len = 0;
 	int direction, flags;
@@ -47,18 +48,10 @@ plan_dft_1d(PyObject *self, PyObject *args)
 		printf("The list is %lu long.\n", list_len);
 	}
 
-	if (is_complex_list(list))
-		puts("List is complex.");
-	else {
-		puts("list is not complex.");
+	if (!is_complex_list(list)) {
+		PyErr_SetString(PyExc_TypeError, "Expected a list of complex numbers.");
+		return NULL;
 	}
-
-	input_array = malloc(list_len * sizeof(Py_complex));
-	if (!input_array) {
-		perror("plan_dft_1d");
-		return Py_None;
-	}
-
 
 	return Py_None;
 }
@@ -114,7 +107,6 @@ static PyMethodDef Minifftw_methods[] = {
 
 static struct PyModuleDef fftwmodule = {
 	PyModuleDef_HEAD_INIT,
-	"comparse", /* test: parse complex numbers */
 	NULL,
 	-1, /* awkward interpreter state foo */
 	Minifftw_methods,
