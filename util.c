@@ -43,7 +43,7 @@ fill_array(PyObject *list, Py_complex *array, Py_ssize_t total_len)
 	PyObject *iter_obj = NULL;
 
 	for (i = 0; (iter_obj = PyIter_Next(iterator)) && i <= total_len; i++) {
-		printf("looping %i\n", i);
+		printf("looping %li\n", i);
 		array[i] = PyComplex_AsCComplex(iter_obj);
 		Py_DECREF(iter_obj);
 	}

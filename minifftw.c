@@ -24,13 +24,30 @@
 
 #include "minifftw.h"
 
-static PyObject *Fftw_error = NULL;
+static PyObject *Mfftw_error = NULL;
+
+
+static int
+allocate_arrays(unsigned long long len, fftw_complex **in_arr, fftw_complex **out_arr)
+{
+	*in_arr = calloc(len, sizeof(fftw_complex));
+	if (!*in_arr)
+		return -1;
+
+	*out_arr = calloc(len, sizeof(fftw_complex));
+	if (!*out_arr) {
+		free(*in_arr);
+		return -1;
+	}
+
+	return 0;
+}
 
 // fftw_plan_dft_1d(NUM_POINTS, result, result, FFTW_FORWARD, FFTW_ESTIMATE);
 static PyObject*
 plan_dft_1d(PyObject *self, PyObject *args)
 {
-	PyObject *list = NULL, *plan_capsule = NULL;
+	PyObject *list = NULL;
 	fftw_plan plan;
 	fftw_complex *input_array = NULL, *output_array = NULL;
 	unsigned long long list_len = 0;
@@ -42,11 +59,12 @@ plan_dft_1d(PyObject *self, PyObject *args)
 	puts("alive 2");
 	if (ret == 0) return NULL;
 
-	if (PyList_Check(list) == 0)
-		puts("not a list :(");
-	else {
-		list_len = PyList_Size(list);
-		printf("The list is %lu long.\n", list_len);
+	if (PyList_Check(list) == 0) {
+		PyErr_SetString(PyExc_TypeError, "Expected a list of complex numbers.");
+		return NULL;
+	} else {
+		list_len = (unsigned long long)PyList_Size(list);
+		printf("The list is %llu long.\n", list_len);
 	}
 
 	if (!is_complex_list(list)) {
@@ -55,22 +73,11 @@ plan_dft_1d(PyObject *self, PyObject *args)
 	}
 	list_len = PyList_Size(list);
 
-	input_array = calloc(list_len, sizeof(fftw_complex));
-	if (!input_array)
-		goto mem_err_out;
-	output_array = calloc(list_len, sizeof(fftw_complex));
-	if (!output_array)
-		goto mem_err_out;
+	if (allocate_arrays(list_len, &input_array, &output_array) != 0)
+		return PyErr_NoMemory();
 
 	plan = fftw_plan_dft_1d(list_len, input_array, output_array, direction, flags);
-	mfftw_create_capsule(plan);
-
-	return Py_None;
-
-mem_err_out:
-	free(input_array);
-	free(output_array);
-	return PyErr_NoMemory;
+	return mfftw_encapsulate_plan(plan, list, input_array, output_array);
 }
 
 
@@ -118,12 +125,14 @@ parse_complex(PyObject *self, PyObject *args)
 
 static PyMethodDef Minifftw_methods[] = {
 	{"parse_complex", parse_complex, METH_VARARGS, "Build stuff from bytes"},
+	{"plan_dft_1d", plan_dft_1d, METH_VARARGS, "one dimensional FFTW"},
 	{NULL, NULL, 0, NULL},
 };
 
 
 static struct PyModuleDef fftwmodule = {
 	PyModuleDef_HEAD_INIT,
+	"minifftw",
 	NULL,
 	-1, /* awkward interpreter state foo */
 	Minifftw_methods,
@@ -139,11 +148,11 @@ PyInit_minifftw(void)
 	if (!m)
 		return NULL;
 
-	Fftw_error = PyErr_NewException("spam.error", NULL, NULL);
-	Py_XINCREF(Fftw_error);
-	if (PyModule_AddObject(m, "error", Fftw_error) < 0) {
-		Py_XDECREF(Fftw_error);
-		Py_CLEAR(Fftw_error);
+	Mfftw_error = PyErr_NewException("spam.error", NULL, NULL);
+	Py_XINCREF(Mfftw_error);
+	if (PyModule_AddObject(m, "error", Mfftw_error) < 0) {
+		Py_XDECREF(Mfftw_error);
+		Py_CLEAR(Mfftw_error);
 		Py_DECREF(m);
 		return NULL;
 	}
