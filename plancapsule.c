@@ -26,6 +26,7 @@ static void
 mfftw_cleanup_plan(struct mini_fftw_plan *plan)
 {
 	free(plan->input_array);
+	free(plan->output_array);
 	fftw_destroy_plan(plan->plan);
 	Py_DECREF(plan->original_list);
 }
@@ -110,6 +111,7 @@ mfftw_unwrap_capsule(PyObject *mplan)
 }
 
 
+/* Actually copies the contents of the python list into the C array */
 int
 mfftw_prepare_for_execution(mini_fftw_plan *mplan)
 {
@@ -123,8 +125,8 @@ mfftw_prepare_for_execution(mini_fftw_plan *mplan)
 }
 
 
-PyObject *
-mfftw_complex_list_from_mplan(mini_fftw_plan *mplan)
+int
+mfftw_mplan_prepare_for_output(mini_fftw_plan *mplan)
 {
-
+	return fftw_arr_to_list(mplan->orig_list, mplan->output_array, mplan->list_len);
 }

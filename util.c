@@ -85,11 +85,31 @@ fill_fftw_array(PyObject *list, fftw_complex *array, Py_ssize_t total_len)
 	for (i = 0; (iter_obj = PyIter_Next(iterator)) && i < total_len; i++) {
 		printf("looping %li\n", i);
 		tmp = PyComplex_AsCComplex(iter_obj);
-		array[MFFTW_REAL] = tmp[MFFTW_REAL];
-		array[MFFTW_IMAG] = tmp[MFFTW_IMAG];
+		array[i][MFFTW_REAL] = tmp.real
+		array[i][MFFTW_IMAG] = tmp.imag
 		Py_DECREF(iter_obj);
+		Py_DECREF(tmp);
 	}
 
 	Py_DECREF(iterator);
+	return 0;
+}
+
+
+int
+fftw_arr_to_list(PyObject *list, fftw_complex *array, Py_ssize_t len)
+{
+	size_t i;
+	PyComplex c_tmp = {0};
+	PyObject *py_tmp = NULL;
+
+	for (i = 0; i < total_len; i++) {
+		c_tmp.real = array[i][MFFTW_REAL];
+		c_tmp.imag = array[i][MFFTW_IMAG];
+		py_tmp = PyComplex_FromCComplex(c_tmp);
+		if (PyList_SetItem(list, i, py_tmp) != 0)
+			return -1;
+	}
+
 	return 0;
 }
