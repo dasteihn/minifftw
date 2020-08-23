@@ -79,6 +79,9 @@ plan_dft_1d(PyObject *self, PyObject *args)
 	flags |= FFTW_DESTROY_INPUT;
 
 #ifdef MFFTW_MPI
+	/*
+	 * COMM_WORLD means: All existing MPI-tasks will participate in calculating.
+	 */
 	plan = fftw_mpi_plan_dft_1d(list_len, input_array, output_array,
 			MPI_COMM_WORLD, direction, flags);
 #else
@@ -140,6 +143,7 @@ initialize_threaded_mpi(PyObject *argv_list)
 	 * FUNNELED means: Only the main thread will make MPI-calls
 	 */
 	MPI_Init_thread(&passed_argc, &passed_argv, MPI_THREAD_FUNNELED, &provided);
+	puts("init called");
 	free(passed_argv);
 
 	return (bool)(provided >= MPI_THREAD_FUNNELED);
@@ -189,8 +193,9 @@ static PyObject *
 finit(PyObject *self, PyObject *args)
 {
 #ifdef MFFTW_MPI
-	fftw_mpi_cleanup();
-//	MPI_Finalize();
+	MPI_Finalize();
+//	fftw_mpi_cleanup();
+	puts("finalize called");
 #else
 	fftw_cleanup();	
 #endif /* MFFTW_MPI */
