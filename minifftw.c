@@ -26,7 +26,6 @@
 
 static PyObject *Mfftw_error = NULL;
 
-
 static int
 allocate_arrays(unsigned long long len, fftw_complex **in_arr, fftw_complex **out_arr)
 {
@@ -138,8 +137,7 @@ initialize_threaded_mpi(PyObject *argv_list)
 		return false;
 
 	/*
-	 * FUNNELED means: All MPI processes shall participate in calucating,
-	 * to increase the power and glory of this extension.
+	 * FUNNELED means: Only the main thread will make MPI-calls
 	 */
 	MPI_Init_thread(&passed_argc, &passed_argv, MPI_THREAD_FUNNELED, &provided);
 	free(passed_argv);
@@ -192,7 +190,9 @@ finit(PyObject *self, PyObject *args)
 {
 #ifdef MFFTW_MPI
 	fftw_mpi_cleanup();
-	MPI_Finalize();
+//	MPI_Finalize();
+#else
+	fftw_cleanup();	
 #endif /* MFFTW_MPI */
 
 	return Py_None;
@@ -201,6 +201,7 @@ finit(PyObject *self, PyObject *args)
 
 static PyMethodDef Minifftw_methods[] = {
 	{"init", init, METH_VARARGS, "prepare FFTW and (if desired) MPI"},
+	{"finit", finit, METH_VARARGS, "finalize everything"},
 	{"plan_dft_1d", plan_dft_1d, METH_VARARGS, "one dimensional FFTW"},
 	{"execute", execute, METH_VARARGS, "execute a previously created plan"},
 	{NULL, NULL, 0, NULL},
