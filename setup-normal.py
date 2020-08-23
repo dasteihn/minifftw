@@ -12,7 +12,8 @@ module1 = Extension('minifftw',
 # causes awkward behavior.
 # os.environ['CC'] = "mpicc"
 
-setup(name = 'minifftw', version = '0.1', description = 'schrott',
+setup(name = 'minifftw', version = '0.1',
+        description = 'minimalistic, uncomplete FFTW wrapper without MPI support.',
         ext_modules = [module1],
         author='Philipp Stanner',
         author_email='stanner@posteo.de')

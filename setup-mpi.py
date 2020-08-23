@@ -1,7 +1,8 @@
 from distutils.core import setup, Extension
 import os
+import sys
 
-module1 = Extension('minifftw',
+Extension('minifftw',
         sources = ['minifftw.c', 'util.c', 'plancapsule.c'],
         libraries = ['fftw3'],
         extra_compile_args = ['-pthread', '-lfftw3_mpi', '-lfftw3_threads',
@@ -9,11 +10,8 @@ module1 = Extension('minifftw',
         extra_link_args = ['-lpthread', '-lfftw3_threads', '-lfftw3_mpi'],
         )
 
-# Use the mpi-C-Compiler-Wrapper. Setting the environment variable from extern
-# causes awkward behavior.
-os.environ['CC'] = "mpicc"
-
-setup(name = 'minifftw', version = '0.1', description = 'schrott',
+setup(name = 'minifftw', version = '0.2',
+        description = 'minimalistic, uncomplete FFTW wrapper with MPI support.',
         ext_modules = [module1],
         author='Philipp Stanner',
         author_email='stanner@posteo.de')
