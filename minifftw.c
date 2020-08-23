@@ -80,7 +80,7 @@ plan_dft_1d(PyObject *self, PyObject *args)
 static PyObject *
 execute(PyObject *self, PyObject *args)
 {
-	mini_fftw_plan *mplan = NULL;
+	struct mini_fftw_plan *mplan = NULL;
 	PyObject *plancapsule = NULL;
 	int ret = PyArg_ParseTuple(args, "O", &plancapsule);
 	if (ret == 0 || !plancapsule)
@@ -93,6 +93,8 @@ execute(PyObject *self, PyObject *args)
 		return NULL;
 
 	fftw_execute(mplan->plan);
+
+	return Py_None;
 }
 
 
@@ -141,6 +143,7 @@ parse_complex(PyObject *self, PyObject *args)
 static PyMethodDef Minifftw_methods[] = {
 	{"parse_complex", parse_complex, METH_VARARGS, "Build stuff from bytes"},
 	{"plan_dft_1d", plan_dft_1d, METH_VARARGS, "one dimensional FFTW"},
+	{"execute", execute, METH_VARARGS, "execute a previously created plan"},
 	{NULL, NULL, 0, NULL},
 };
 

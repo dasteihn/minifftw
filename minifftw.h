@@ -29,6 +29,10 @@
 bool is_complex_list(PyObject *);
 Py_complex* complex_list_to_c_array(PyObject *);
 PyObject* mfftw_encapsulate_plan(fftw_plan, PyObject*, fftw_complex*, fftw_complex*);
+struct mini_fftw_plan* mfftw_unwrap_capsule(PyObject *);
+int mfftw_prepare_for_execution(struct mini_fftw_plan *);
+int fill_fftw_array(PyObject *, fftw_complex *, Py_ssize_t);
+int fftw_arr_to_list(PyObject *, fftw_complex *, Py_ssize_t);
 
 struct mini_fftw_plan {
 	Py_ssize_t list_len;

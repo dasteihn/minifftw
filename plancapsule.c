@@ -28,7 +28,7 @@ mfftw_cleanup_plan(struct mini_fftw_plan *plan)
 	free(plan->input_array);
 	free(plan->output_array);
 	fftw_destroy_plan(plan->plan);
-	Py_DECREF(plan->original_list);
+	Py_DECREF(plan->orig_list);
 }
 
 
@@ -56,7 +56,7 @@ mfftw_create_capsule(struct mini_fftw_plan *mplan)
  * The capsule-struct will also contain the python-list, so we call INCREF.
  */
 static struct mini_fftw_plan *
-mfftw_create_capsule_struct(fftw_plan plan, PyObject *orig_list,
+mfftw_create_capsule_struct(fftw_plan plan, PyObject *original_list,
 		fftw_complex *in_arr, fftw_complex *out_arr)
 {
 	struct mini_fftw_plan *capsule = calloc(1, sizeof(struct mini_fftw_plan));
@@ -64,9 +64,9 @@ mfftw_create_capsule_struct(fftw_plan plan, PyObject *orig_list,
 		return NULL;
 	}
 
-	capsule->data_len = PyList_Size(orig_list);
-	capsule->original_list = orig_list;
-	Py_INCREF(orig_list);
+	capsule->list_len = PyList_Size(original_list);
+	capsule->orig_list = original_list;
+	Py_INCREF(original_list);
 	capsule->input_array = in_arr;
 	capsule->output_array = out_arr;
 	capsule->plan = plan;
@@ -97,15 +97,15 @@ mfftw_encapsulate_plan(fftw_plan plan, PyObject *orig_list,
  * ========================= Capsule evaluation ===============================
  */
 
-mini_fftw_plan *
+struct mini_fftw_plan *
 mfftw_unwrap_capsule(PyObject *mplan)
 {
-	if (PyCapsule_CheckExact(plancapsule) == 0) {
+	if (PyCapsule_CheckExact(mplan) == 0) {
 		PyErr_SetString(PyExc_TypeError, "Expected a capsule.");
 		return NULL;
 	}
 	struct mini_fftw_plan *plan =
-		(struct mini_fftw_plan *)PyCapsule_GetPointer(mplan);
+		(struct mini_fftw_plan *)PyCapsule_GetPointer(mplan, NULL);
 	// TODO error handling?
 	return plan;
 }
@@ -113,7 +113,7 @@ mfftw_unwrap_capsule(PyObject *mplan)
 
 /* Actually copies the contents of the python list into the C array */
 int
-mfftw_prepare_for_execution(mini_fftw_plan *mplan)
+mfftw_prepare_for_execution(struct mini_fftw_plan *mplan)
 {
 	int ret = -1;
 	ret = fill_fftw_array(mplan->orig_list, mplan->input_array, mplan->list_len);
@@ -126,7 +126,7 @@ mfftw_prepare_for_execution(mini_fftw_plan *mplan)
 
 
 int
-mfftw_mplan_prepare_for_output(mini_fftw_plan *mplan)
+mfftw_mplan_prepare_for_output(struct mini_fftw_plan *mplan)
 {
 	return fftw_arr_to_list(mplan->orig_list, mplan->output_array, mplan->list_len);
 }
