@@ -38,7 +38,8 @@ struct mfftw_plan* mfftw_unwrap_capsule(PyObject *);
 int mfftw_prepare_for_execution(struct mfftw_plan *);
 int mfftw_prepare_for_output(struct mfftw_plan *);
 int fill_fftw_array(PyObject *, fftw_complex *, Py_ssize_t);
-int fftw_arr_to_list(PyObject *, fftw_complex *, Py_ssize_t);
+int mfftw_arr_to_list(PyObject *, fftw_complex *, Py_ssize_t);
+char** check_get_str_array(PyObject *, int);
 
 struct mfftw_plan {
 	Py_ssize_t list_len;

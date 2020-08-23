@@ -80,7 +80,7 @@ plan_dft_1d(PyObject *self, PyObject *args)
 	flags |= FFTW_DESTROY_INPUT;
 
 #ifdef MFFTW_MPI
-	plan = fftw_plan_dft_1d(list_len, input_array, output_array,
+	plan = fftw_mpi_plan_dft_1d(list_len, input_array, output_array,
 			MPI_COMM_WORLD, direction, flags);
 #else
 	plan = fftw_plan_dft_1d(list_len, input_array, output_array, direction, flags);
@@ -115,24 +115,58 @@ execute(PyObject *self, PyObject *args)
 }
 
 
+static bool
+initialize_threaded_mpi(PyObject *argv_list)
+{
+	int passed_argc = 0, provided = 0;
+	char **passed_argv = NULL;
+	printf("argc: %i\n", passed_argc);
+
+	/*
+	 * passed_argc is correct as-is, because this function received the
+	 * version /without/ the nr_of_threads integer in init()
+	 */
+	passed_argc = PyList_Size(argv_list);
+	if (passed_argc <= 0) { 
+		PyErr_SetString(PyExc_ValueError,
+				"Length of argv list wrong for MPI usage.");
+		return false;
+	}
+	printf("argc: %i\n", passed_argc);
+	passed_argv = check_get_str_array(argv_list, passed_argc);
+	if (!passed_argv)
+		return false;
+
+	/*
+	 * FUNNELED means: All MPI processes shall participate in calucating,
+	 * to increase the power and glory of this extension.
+	 */
+	MPI_Init_thread(&passed_argc, &passed_argv, MPI_THREAD_FUNNELED, &provided);
+	free(passed_argv);
+
+	return (bool)(provided >= MPI_THREAD_FUNNELED);
+}
+
+
 static PyObject *
 init(PyObject *self, PyObject *args)
 {
 	bool threads_ok = true;
-	int passed_arg, nr_of_threads = 4;
-	char **passed_argv = NULL;
-	(void)passed_arg;
-	(void)passed_argv;
+	int nr_of_threads = 4;
+	PyObject *argv_list = NULL;
 
-	int ret = PyArg_ParseTuple(args, "i", &nr_of_threads);
-	if (ret == 0)
+	int ret = PyArg_ParseTuple(args, "O!i", &PyList_Type, &argv_list,
+			&nr_of_threads);
+	if (ret == 0 || !argv_list)
 		return NULL;
 
+	if (PyList_Check(argv_list) == 0) {
+		PyErr_SetString(PyExc_TypeError, "Expected a list of strings.");
+		return NULL;
+	}
+
 #ifdef MFFTW_MPI
-	int provided = 0;
-	/* TODO get environment */
-	MPI_Init_thread(&argc, &argv, MPI_THREAD_FUNNELED, &provided);
-	threads_ok = provided >= MPI_THREAD_FUNNELED;
+	threads_ok = initialize_threaded_mpi(argv_list);
 #endif /* MFFTW_MPI */
 	/* works without preprocessor, due to initialization with true */
 	if (threads_ok)

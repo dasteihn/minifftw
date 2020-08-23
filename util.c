@@ -18,7 +18,6 @@
 
 #include <Python.h>
 #include <stdbool.h>
-#include <stdio.h>
 
 #include "minifftw.h"
 
@@ -30,16 +29,60 @@ is_complex_list(PyObject *o)
 }
 
 
+static char *
+get_str_from_object(PyObject *o)
+{
+	char *ret = NULL;
+
+	if (!PyUnicode_Check(o)) {
+		PyErr_SetString(PyExc_TypeError, "Could not parse argv string 0.");
+		return NULL;
+	}
+
+	ret = (char *)PyUnicode_DATA(o);
+	if (!ret)
+		PyErr_SetString(PyExc_TypeError, "Could not parse argv string 1.");
+
+	return ret;
+}
+
+
+char **
+check_get_str_array(PyObject *list, int argc_passed)
+{
+	char **ret = NULL;
+	PyObject *tmp = NULL;
+
+	ret = malloc(argc_passed * sizeof(char *));
+	if (!ret) {
+		/* raises memory exception and returns NULL */
+		return (char **)PyErr_NoMemory();
+	}
+
+	for (int i = 0; i < argc_passed; i++) {
+		tmp = PyList_GetItem(list, i);
+		if (!tmp)
+			goto err_out;
+		if ((ret[i] = get_str_from_object(tmp)) == NULL)
+			goto err_out;
+	}
+
+	return ret;
+
+err_out:
+	free(ret);
+	return NULL;
+}
+
+
 static void
 fill_array(PyObject *list, Py_complex *array, Py_ssize_t total_len)
 {
-	puts("entered fill array");
 	size_t i;
 	PyObject *iterator = PyObject_GetIter(list);
 	if (!iterator || PyIter_Check(iterator) == 0) {
 		return;
 	}
-	puts("is iterable");
 	PyObject *iter_obj = NULL;
 
 	for (i = 0; (iter_obj = PyIter_Next(iterator)) && i <= total_len; i++) {
@@ -70,16 +113,13 @@ complex_list_to_c_array(PyObject *list)
 int
 fill_fftw_array(PyObject *list, fftw_complex *array, Py_ssize_t total_len)
 {
-	puts("entered fill array");
 	size_t i;
 	Py_complex tmp = {0};
 	PyObject *iter_obj = NULL;
 	PyObject *iterator = PyObject_GetIter(list);
 	if (!iterator || PyIter_Check(iterator) == 0) {
-		puts("is not iterable");
 		return -1;
 	}
-	puts("is iterable");
 
 	for (i = 0; (iter_obj = PyIter_Next(iterator)) && i < total_len; i++) {
 		tmp = PyComplex_AsCComplex(iter_obj);
@@ -94,7 +134,7 @@ fill_fftw_array(PyObject *list, fftw_complex *array, Py_ssize_t total_len)
 
 
 int
-fftw_arr_to_list(PyObject *list, fftw_complex *array, Py_ssize_t len)
+mfftw_arr_to_list(PyObject *list, fftw_complex *array, Py_ssize_t len)
 {
 	size_t i;
 	Py_complex c_tmp = {0};
