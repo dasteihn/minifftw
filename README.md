@@ -10,6 +10,14 @@ FFTW offers. Probably just the 1D transforms.
 
 This project is work in progress and not intended for productive use yet.
 
+## Requirements
+
+On your system, you'll need the following components:
+
+- fftw3 C-library with header files
+- fftw3\_mpi with header files
+- MPI implementation with header files
+
 ## License
 
  (C) 2020, Philipp Stanner, `<stanner@posteo.de>`
