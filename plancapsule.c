@@ -23,7 +23,7 @@
 /* Capsule creation and destruction */
 
 static void
-mfftw_cleanup_plan(struct mini_fftw_plan *plan)
+mfftw_cleanup_plan(struct mfftw_plan *plan)
 {
 	free(plan->input_array);
 	free(plan->output_array);
@@ -35,8 +35,8 @@ mfftw_cleanup_plan(struct mini_fftw_plan *plan)
 static void
 mfftw_destroy_capsule(PyObject *capsule)
 {
-	struct mini_fftw_plan *plan = 
-		(struct mini_fftw_plan *)PyCapsule_GetPointer(capsule, NULL);
+	struct mfftw_plan *plan = 
+		(struct mfftw_plan *)PyCapsule_GetPointer(capsule, NULL);
 	/* TODO error handling */
 
 	mfftw_cleanup_plan(plan);
@@ -44,7 +44,7 @@ mfftw_destroy_capsule(PyObject *capsule)
 
 
 static inline PyObject *
-mfftw_create_capsule(struct mini_fftw_plan *mplan)
+mfftw_create_capsule(struct mfftw_plan *mplan)
 {
 	return PyCapsule_New((void*)mplan, NULL, mfftw_destroy_capsule);
 }
@@ -55,11 +55,11 @@ mfftw_create_capsule(struct mini_fftw_plan *mplan)
  * space as a general handler struct (in form of an opaque pointer).
  * The capsule-struct will also contain the python-list, so we call INCREF.
  */
-static struct mini_fftw_plan *
+static struct mfftw_plan *
 mfftw_create_capsule_struct(fftw_plan plan, PyObject *original_list,
 		fftw_complex *in_arr, fftw_complex *out_arr)
 {
-	struct mini_fftw_plan *capsule = calloc(1, sizeof(struct mini_fftw_plan));
+	struct mfftw_plan *capsule = calloc(1, sizeof(struct mfftw_plan));
 	if (!capsule) {
 		return NULL;
 	}
@@ -83,7 +83,7 @@ PyObject *
 mfftw_encapsulate_plan(fftw_plan plan, PyObject *orig_list,
 		fftw_complex *in_arr, fftw_complex *out_arr)
 {
-	struct mini_fftw_plan *mplan = NULL;
+	struct mfftw_plan *mplan = NULL;
 	mplan = mfftw_create_capsule_struct(plan, orig_list, in_arr, out_arr);
 	if (!mplan)
 		return PyErr_NoMemory();
@@ -97,15 +97,15 @@ mfftw_encapsulate_plan(fftw_plan plan, PyObject *orig_list,
  * ========================= Capsule evaluation ===============================
  */
 
-struct mini_fftw_plan *
+struct mfftw_plan *
 mfftw_unwrap_capsule(PyObject *mplan)
 {
 	if (PyCapsule_CheckExact(mplan) == 0) {
 		PyErr_SetString(PyExc_TypeError, "Expected a capsule.");
 		return NULL;
 	}
-	struct mini_fftw_plan *plan =
-		(struct mini_fftw_plan *)PyCapsule_GetPointer(mplan, NULL);
+	struct mfftw_plan *plan =
+		(struct mfftw_plan *)PyCapsule_GetPointer(mplan, NULL);
 	// TODO error handling?
 	return plan;
 }
@@ -113,7 +113,7 @@ mfftw_unwrap_capsule(PyObject *mplan)
 
 /* Actually copies the contents of the python list into the C array */
 int
-mfftw_prepare_for_execution(struct mini_fftw_plan *mplan)
+mfftw_prepare_for_execution(struct mfftw_plan *mplan)
 {
 	int ret = -1;
 	ret = fill_fftw_array(mplan->orig_list, mplan->input_array, mplan->list_len);
@@ -126,7 +126,7 @@ mfftw_prepare_for_execution(struct mini_fftw_plan *mplan)
 
 
 int
-mfftw_mplan_prepare_for_output(struct mini_fftw_plan *mplan)
+mfftw_mplan_prepare_for_output(struct mfftw_plan *mplan)
 {
 	return fftw_arr_to_list(mplan->orig_list, mplan->output_array, mplan->list_len);
 }

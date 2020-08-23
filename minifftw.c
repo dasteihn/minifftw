@@ -80,7 +80,7 @@ plan_dft_1d(PyObject *self, PyObject *args)
 static PyObject *
 execute(PyObject *self, PyObject *args)
 {
-	struct mini_fftw_plan *mplan = NULL;
+	struct mfftw_plan *mplan = NULL;
 	PyObject *plancapsule = NULL;
 	int ret = PyArg_ParseTuple(args, "O", &plancapsule);
 	if (ret == 0 || !plancapsule)
