@@ -102,48 +102,6 @@ execute(PyObject *self, PyObject *args)
 }
 
 
-static PyObject*
-parse_complex(PyObject *self, PyObject *args)
-{
-	Py_ssize_t list_len = 0;
-	PyObject *list = NULL;
-	Py_complex *array = NULL;
-	puts("alive 0");
-/* 
- * TODO:
- * We need to be able to parse the data as np-arrays, not python-lists.
- */
-	int ret = PyArg_ParseTuple(args, "O!", &PyList_Type, &list);
-	puts("alive 1");
-	if (!list) return NULL;
-	puts("alive 2");
-	if (ret == 0) return NULL;
-
-	if (PyList_Check(list) == 0)
-		puts("not a list :(");
-	else {
-		list_len = PyList_Size(list);
-		printf("The list is %lu long.\n", list_len);
-	}
-
-	if (is_complex_list(list))
-		puts("List is complex.");
-	else {
-		puts("list is not complex.");
-		return Py_None;
-	}
-
-	array = complex_list_to_c_array(list);
-	puts("alive 3");
-	printf("first imag element: %lf\n", array[0].imag);
-	free(array);
-	array = NULL;
-
-	return Py_None;
-}
-
-
-
 static PyMethodDef Minifftw_methods[] = {
 	{"parse_complex", parse_complex, METH_VARARGS, "Build stuff from bytes"},
 	{"plan_dft_1d", plan_dft_1d, METH_VARARGS, "one dimensional FFTW"},
