@@ -37,14 +37,12 @@ fill_array(PyObject *list, Py_complex *array, Py_ssize_t total_len)
 	size_t i;
 	PyObject *iterator = PyObject_GetIter(list);
 	if (!iterator || PyIter_Check(iterator) == 0) {
-		puts("is not iterable");
 		return;
 	}
 	puts("is iterable");
 	PyObject *iter_obj = NULL;
 
 	for (i = 0; (iter_obj = PyIter_Next(iterator)) && i <= total_len; i++) {
-		printf("looping %li\n", i);
 		array[i] = PyComplex_AsCComplex(iter_obj);
 		Py_DECREF(iter_obj);
 	}
@@ -84,7 +82,6 @@ fill_fftw_array(PyObject *list, fftw_complex *array, Py_ssize_t total_len)
 	puts("is iterable");
 
 	for (i = 0; (iter_obj = PyIter_Next(iterator)) && i < total_len; i++) {
-		printf("looping %li\n", i);
 		tmp = PyComplex_AsCComplex(iter_obj);
 		array[i][MFFTW_REAL] = tmp.real;
 		array[i][MFFTW_IMAG] = tmp.imag;

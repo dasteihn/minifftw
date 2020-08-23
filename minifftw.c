@@ -72,7 +72,20 @@ plan_dft_1d(PyObject *self, PyObject *args)
 	if (allocate_arrays(list_len, &input_array, &output_array) != 0)
 		return PyErr_NoMemory();
 
+	/*
+	 * currently, we allocate one array more than necessary, since we
+	 * return output data directly to the python list. So we allow the FFTW
+	 * to use the input array as it pleases, to be quicker (possibly).
+	 */
+	flags |= FFTW_DESTROY_INPUT;
+
+#ifdef MFFTW_MPI
+	plan = fftw_plan_dft_1d(list_len, input_array, output_array,
+			MPI_COMM_WORLD, direction, flags);
+#else
 	plan = fftw_plan_dft_1d(list_len, input_array, output_array, direction, flags);
+#endif
+
 	return mfftw_encapsulate_plan(plan, list, input_array, output_array);
 }
 
@@ -102,8 +115,58 @@ execute(PyObject *self, PyObject *args)
 }
 
 
+static PyObject *
+init(PyObject *self, PyObject *args)
+{
+	bool threads_ok = true;
+	int passed_arg, nr_of_threads = 4;
+	char **passed_argv = NULL;
+	(void)passed_arg;
+	(void)passed_argv;
+
+	int ret = PyArg_ParseTuple(args, "i", &nr_of_threads);
+	if (ret == 0)
+		return NULL;
+
+#ifdef MFFTW_MPI
+	int provided = 0;
+	/* TODO get environment */
+	MPI_Init_thread(&argc, &argv, MPI_THREAD_FUNNELED, &provided);
+	threads_ok = provided >= MPI_THREAD_FUNNELED;
+#endif /* MFFTW_MPI */
+	/* works without preprocessor, due to initialization with true */
+	if (threads_ok)
+		threads_ok = fftw_init_threads();
+
+	if (!threads_ok) {
+		/* TODO: error handling */
+		return NULL;
+	}
+
+#ifdef MFFTW_MPI
+	fftw_mpi_init();
+#endif /* MFFTW_MPI */
+
+	fftw_plan_with_nthreads(nr_of_threads);
+
+	return Py_None;
+}
+
+
+static PyObject *
+finit(PyObject *self, PyObject *args)
+{
+#ifdef MFFTW_MPI
+	fftw_mpi_cleanup();
+	MPI_Finalize();
+#endif /* MFFTW_MPI */
+
+	return Py_None;
+}
+
+
 static PyMethodDef Minifftw_methods[] = {
-	{"parse_complex", parse_complex, METH_VARARGS, "Build stuff from bytes"},
+	{"init", init, METH_VARARGS, "prepare FFTW and (if desired) MPI"},
 	{"plan_dft_1d", plan_dft_1d, METH_VARARGS, "one dimensional FFTW"},
 	{"execute", execute, METH_VARARGS, "execute a previously created plan"},
 	{NULL, NULL, 0, NULL},
@@ -139,6 +202,10 @@ PyInit_minifftw(void)
 	PyModule_AddIntMacro(m, FFTW_FORWARD);
 	PyModule_AddIntMacro(m, FFTW_BACKWARD);
 	PyModule_AddIntMacro(m, FFTW_ESTIMATE);
+	PyModule_AddIntMacro(m, FFTW_MEASURE);
+	PyModule_AddIntMacro(m, FFTW_PATIENT);
+	PyModule_AddIntMacro(m, FFTW_EXHAUSTIVE);
+	PyModule_AddIntMacro(m, FFTW_WISDOM_ONLY);
 
 	return m;
 }

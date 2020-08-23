@@ -4,6 +4,8 @@ import os
 module1 = Extension('minifftw',
         sources = ['minifftw.c', 'util.c', 'plancapsule.c'],
         libraries = ['fftw3'],
+        extra_compile_args = ['-pthread', '-lfftw3_threads', '-lfftw3', '-lm'],
+        extra_link_args = ['-lpthread', '-lfftw3_threads'],
         )
 
 # Use the mpi-C-Compiler-Wrapper. Setting the environment variable from extern

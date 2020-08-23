@@ -20,8 +20,13 @@
 #define __minifftw_
 
 #include <Python.h>
-#include <fftw3.h>
 #include <stdbool.h>
+
+#ifdef MFFTW_MPI
+#include <fftw3-mpi.h>
+#else
+#include <fftw3.h>
+#endif /* MFFTW_MPI */
 
 #define MFFTW_REAL 0
 #define MFFTW_IMAG 1
