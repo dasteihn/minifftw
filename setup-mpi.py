@@ -2,7 +2,9 @@ from distutils.core import setup, Extension
 import os
 import sys
 
-Extension('minifftw',
+os.environ["CC"] = "mpicc"
+
+module1 = Extension('minifftw',
         sources = ['minifftw.c', 'util.c', 'plancapsule.c'],
         libraries = ['fftw3'],
         extra_compile_args = ['-pthread', '-lfftw3_mpi', '-lfftw3_threads',
