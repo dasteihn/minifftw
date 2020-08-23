@@ -93,8 +93,12 @@ execute(PyObject *self, PyObject *args)
 		return NULL;
 
 	fftw_execute(mplan->plan);
+	if (mfftw_prepare_for_output(mplan) != 0) {
+		puts("getting data back failed.");
+		return NULL;
+	}
 
-	return Py_None;
+	return mplan->orig_list;
 }
 
 

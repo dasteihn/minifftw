@@ -31,6 +31,7 @@ Py_complex* complex_list_to_c_array(PyObject *);
 PyObject* mfftw_encapsulate_plan(fftw_plan, PyObject*, fftw_complex*, fftw_complex*);
 struct mfftw_plan* mfftw_unwrap_capsule(PyObject *);
 int mfftw_prepare_for_execution(struct mfftw_plan *);
+int mfftw_prepare_for_output(struct mfftw_plan *);
 int fill_fftw_array(PyObject *, fftw_complex *, Py_ssize_t);
 int fftw_arr_to_list(PyObject *, fftw_complex *, Py_ssize_t);
 

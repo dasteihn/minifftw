@@ -126,7 +126,7 @@ mfftw_prepare_for_execution(struct mfftw_plan *mplan)
 
 
 int
-mfftw_mplan_prepare_for_output(struct mfftw_plan *mplan)
+mfftw_prepare_for_output(struct mfftw_plan *mplan)
 {
 	return fftw_arr_to_list(mplan->orig_list, mplan->output_array, mplan->list_len);
 }
