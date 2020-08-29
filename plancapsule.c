@@ -15,11 +15,17 @@
  * You should have received a copy of the GNU General Public License
  * along with Minifftw. If not, see <http://www.gnu.org/licenses/>.
  */
-#define NPY_NO_DEPRECATED_API  NPY_1_7_API_VERSION
 
+#define PY_SSIZE_T_CLEAN
 #include <Python.h>
+
+#define NO_IMPORT_ARRAY
+#define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
+#define PY_ARRAY_UNIQUE_SYMBOL mfftw_ARRAY_API
 #include <numpy/arrayobject.h>
+
 #include <stdlib.h>
+#include <string.h> /* for memcpy */
 #include "minifftw.h"
 
 /*
@@ -61,7 +67,7 @@ mfftw_create_capsule(struct mfftw_plan *mplan)
  * The capsule-struct will also contain the python-list, so we call INCREF.
  */
 static struct mfftw_plan *
-mfftw_create_capsule_struct(fftw_plan plan, PyObject *original_arr,
+mfftw_create_capsule_struct(fftw_plan plan, PyArrayObject *original_arr,
 		fftw_complex *in_arr, fftw_complex *out_arr)
 {
 	struct mfftw_plan *capsule = calloc(1, sizeof(struct mfftw_plan));
@@ -85,7 +91,7 @@ mfftw_create_capsule_struct(fftw_plan plan, PyObject *original_arr,
  * interact with the FFTW.
  */
 PyObject *
-mfftw_encapsulate_plan(fftw_plan plan, PyObject *orig_arr,
+mfftw_encapsulate_plan(fftw_plan plan, PyArrayObject *orig_arr,
 		fftw_complex *in_arr, fftw_complex *out_arr)
 {
 	struct mfftw_plan *mplan = NULL;
@@ -120,8 +126,11 @@ mfftw_unwrap_capsule(PyObject *mplan)
 int
 mfftw_prepare_for_execution(struct mfftw_plan *mplan)
 {
-	mfftw_data_from_npy_to_fftw(mplan->orig_arr, mplan->input_arr,
-			mplan->data_len);
+	void *np_raw = PyArray_DATA(mplan->orig_arr);
+	if (!np_raw)
+		return -1;
+	memcpy(mplan->input_arr, np_raw,
+			mplan->data_len * sizeof(fftw_complex));
 	return 0;
 }
 
@@ -129,7 +138,11 @@ mfftw_prepare_for_execution(struct mfftw_plan *mplan)
 int
 mfftw_prepare_for_output(struct mfftw_plan *mplan)
 {
-	mfftw_data_from_fftw_to_npy(mplan->orig_arr, mplan->output_arr,
-		mplan->data_len);
+	void *np_raw = PyArray_DATA(mplan->orig_arr);
+	if (!np_raw)
+		return -1;
+	printf("data len: %i\n", mplan->data_len);
+	memcpy(np_raw, mplan->output_arr,
+		mplan->data_len * sizeof(fftw_complex));
 	return 0;
 }

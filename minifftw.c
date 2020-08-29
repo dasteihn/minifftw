@@ -15,11 +15,12 @@
  * You should have received a copy of the GNU General Public License
  * along with Minifftw. If not, see <http://www.gnu.org/licenses/>.
  */
-#define NPY_NO_DEPRECATED_API  NPY_1_7_API_VERSION
 
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
 
+#define NPY_NO_DEPRECATED_API  NPY_1_7_API_VERSION
+#define PY_ARRAY_UNIQUE_SYMBOL mfftw_ARRAY_API
 #include <numpy/arrayobject.h>
 
 #include <fftw3.h>
@@ -53,16 +54,22 @@ static PyObject *
 plan_dft_1d(PyObject *self, PyObject *args)
 {
 	puts("start planning...");
-	PyObject *np_array = NULL;
+	PyObject *tmp = NULL;
+	PyArrayObject *np_array = NULL;
 	fftw_plan plan;
 	fftw_complex *input_array = NULL, *output_array = NULL;
 	long long array_len = 0;
 	int direction, flags;
-	int ret = PyArg_ParseTuple(args, "O!ii", &PyArray_Type, &np_array,
+	int ret = PyArg_ParseTuple(args, "O!ii", &PyArray_Type, &tmp,
 		&direction, &flags);
 
 	puts("passed argparse");
-	if (ret == 0 || !np_array)
+	if (ret == 0 || !tmp)
+		return NULL;
+
+	np_array = (PyArrayObject *)PyArray_FROM_OTF(tmp, NPY_COMPLEX128,
+			NPY_ARRAY_IN_ARRAY);
+	if (!np_array)
 		return NULL;
 
 	puts("checking length.");
@@ -97,6 +104,19 @@ plan_dft_1d(PyObject *self, PyObject *args)
 }
 
 
+void
+debug_print(struct mfftw_plan *mplan)
+{
+	for (int i = 0; i < mplan->data_len; i++) {
+		printf("%lf + %lfj", mplan->input_arr[i][0],
+				mplan->input_arr[i][1]);
+	}
+	for (int i = 0; i < mplan->data_len; i++) {
+		printf("%lf + %lfj", mplan->output_arr[i][0],
+				mplan->output_arr[i][1]);
+	}
+}
+
 static PyObject *
 execute(PyObject *self, PyObject *args)
 {
@@ -113,10 +133,12 @@ execute(PyObject *self, PyObject *args)
 		return NULL;
 
 	fftw_execute(mplan->plan);
+	puts("executed plan");
 	if (mfftw_prepare_for_output(mplan) != 0) {
 		puts("getting data back failed.");
 		return NULL;
 	}
+	debug_print(mplan);
 
 	return (PyObject *)mplan->orig_arr;
 }
@@ -253,8 +275,6 @@ PyInit_minifftw(void)
 	PyModule_AddIntMacro(m, FFTW_PATIENT);
 	PyModule_AddIntMacro(m, FFTW_EXHAUSTIVE);
 	PyModule_AddIntMacro(m, FFTW_WISDOM_ONLY);
-
-	/* necessary to use numpy stuff */
 	import_array();
 
 	return m;

@@ -15,15 +15,16 @@
  * You should have received a copy of the GNU General Public License
  * along with Minifftw.  If not, see <http://www.gnu.org/licenses/>.
  */
-#define NPY_NO_DEPRECATED_API  NPY_1_7_API_VERSION
-
+#define PY_SSIZE_T_CLEAN
 #include <Python.h>
-#include <stdbool.h>
 
-/* Import numpy and don't use the deprecated API */
+#define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
+#define NO_IMPORT_ARRAY
+#define PY_ARRAY_UNIQUE_SYMBOL mfftw_ARRAY_API
 #include <numpy/arrayobject.h>
 
 #include "minifftw.h"
+#include <stdbool.h>
 
 static char *
 get_str_from_object(PyObject *o)
@@ -77,7 +78,7 @@ err_out:
 
 
 void
-mfftw_data_from_npy_to_fftw(PyObject *arr_np, fftw_complex *arr_fftw,
+mfftw_data_from_npy_to_fftw(PyArrayObject *arr_np, fftw_complex *arr_fftw,
 	Py_ssize_t total_len)
 {
 	void *np_raw_data = PyArray_DATA(arr_np);
@@ -91,11 +92,12 @@ mfftw_data_from_npy_to_fftw(PyObject *arr_np, fftw_complex *arr_fftw,
 
 
 void 
-mfftw_data_from_fftw_to_npy(PyObject *arr_np, fftw_complex *arr_fftw,
+mfftw_data_from_fftw_to_npy(PyArrayObject *arr_np, fftw_complex *arr_fftw,
 	Py_ssize_t total_len)
 {
 	void *np_raw_data = PyArray_DATA(arr_np);
 	memcpy(np_raw_data, arr_fftw, (size_t)total_len);
+	puts("memcopied stuff!");
 }
 
 /*
@@ -104,7 +106,7 @@ mfftw_data_from_fftw_to_npy(PyObject *arr_np, fftw_complex *arr_fftw,
  * Returns -1 if one of our requirements is violated.
  */
 long long
-check_array_and_get_length(PyObject *arr)
+check_array_and_get_length(PyArrayObject *arr)
 {
 	if (arr == NULL)
 		puts("null!");
