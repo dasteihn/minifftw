@@ -1,19 +1,34 @@
 from distutils.core import setup, Extension
 import os
 
-module1 = Extension('minifftw',
+module_normal = Extension('minifftw',
         sources = ['minifftw.c', 'util.c', 'plancapsule.c'],
         libraries = ['fftw3'],
         extra_compile_args = ['-pthread', '-lfftw3_threads', '-lfftw3', '-lm'],
         extra_link_args = ['-lpthread', '-lfftw3_threads'],
         )
 
-# Use the mpi-C-Compiler-Wrapper. Setting the environment variable from extern
-# causes awkward behavior.
-# os.environ['CC'] = "mpicc"
+module_mpi = Extension('minifftw',
+        sources = ['minifftw.c', 'util.c', 'plancapsule.c'],
+        libraries = ['fftw3'],
+        extra_compile_args = ['-pthread', '-lfftw3_mpi', '-lfftw3_threads',
+            '-lm', '-D MFFTW_MPI'],
+        extra_link_args = ['-lpthread', '-lfftw3_threads', '-lfftw3_mpi'],
+        )
 
-setup(name = 'minifftw', version = '0.1',
+
+# Primitve, but works. Got a problem with it? Then improve the distutils docu. 
+mpi_env = int(os.getenv("MFFTW_MPI", 0))
+if mpi_env == 1:
+    print("building with mpi...")
+    os.environ['CC'] = "mpicc"
+    main_module = module_mpi
+else:
+    print("building without mpi...")
+    main_module = module_normal
+
+setup(name = 'minifftw', version = '0.2',
         description = 'minimalistic, uncomplete FFTW wrapper without MPI support.',
-        ext_modules = [module1],
+        ext_modules = [main_module],
         author='Philipp Stanner',
         author_email='stanner@posteo.de')
