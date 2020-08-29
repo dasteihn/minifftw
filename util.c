@@ -29,6 +29,31 @@ is_complex_list(PyObject *o)
 }
 
 
+long long
+check_array_and_get_length(PyObject *arr)
+{
+	if (PyArray_Check(arr) == 0) {
+		PyErr_SetString(PyExc_TypeError, "Expected an numpy array.");
+		return -1;
+	}
+
+	/* For now, MFFTW will only allow 1-dimensional arrays */
+	if (PyArray_NDIM(arr) != 1) {
+		PyErr_SetString(PyExc_TypeError,
+			"Expected a 1-dimensional numpy array.");
+		return -1;
+	}
+
+	if (!PyArray_ISCOMPLEX(np_array)) {
+		PyErr_SetString(PyExc_TypeError,
+			"Expected an numpy array of complex numbers.");
+		return -1;
+	}
+
+	return (long long)PyList_Size(list);
+}
+
+
 static char *
 get_str_from_object(PyObject *o)
 {
