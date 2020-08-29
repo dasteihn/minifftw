@@ -1,5 +1,6 @@
 import sys
 import time
+import numpy as np
 sys.path.append("./build/lib.linux-x86_64-3.7")
 
 import minifftw as m
