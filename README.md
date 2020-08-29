@@ -21,6 +21,8 @@ On your system, you'll need the following components:
 - fftw3\_mpi with header files
 - MPI implementation with header files
 
+OpenMP is **not** required, as this wrapper uses the FFTW with POSIX threads.
+
 ## Building
 
 - `make normal` for a wrapper around the serial FFTW
@@ -33,13 +35,35 @@ On your system, you'll need the following components:
 ### Basics
 
 ``` Python3
+import sys
 import numpy as np
 import minifftw as mfftw
 
+nr_of_threads = 8
+
+mfftw.init(sys.argv, nr_of_threads)
 data = np.random.random(2048) + np.random.random(2048) * 1j
 plan = mfftw.plan_dft_1d(data, m.FFTW_FORWARD, m.FFTW_PATIENT)
 result = mfftw.execute(plan)
+
+# ...
+mfftw.finit()
 ```
+
+The first call (mfftw.init) is very important when using MPI: It will take your
+environment and pass it to the MPI\_Init() function. Also, this function will
+configure the number of threads the FFTW uses to heat up your machine.
+
+The plan function will prepare everything the FFTW needs to operate and pack
+it into a python-capsule, which later has to be passed to all following
+mfftw functions.
+
+Once you are done transforming everything you wanted, call the finit() function
+to terminate MPI properly.
+
+> **Note**: You can and *should* call init() and finit() regardless wethetr you
+use the MPI version or not. This way, you will never have to adjust your python
+code when using this wrapper, even when you'll run it on a cluster.
 
 ### Important Notes
 
@@ -78,6 +102,7 @@ also because it allows FFTW to use the DESTROY\_INPUT mode, which is often
 benefitial to performance.
 - save memory 2: Look into the FFTW's possibilities for MPI data distribution
 - Think about exposing more of the API to the user, especially more transforms
+- Wisdom: Implement the FFTW's wisdom functionality
 
 ## License
 
