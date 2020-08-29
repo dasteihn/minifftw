@@ -44,7 +44,7 @@ char** check_get_str_array(PyObject *, int);
 
 struct mfftw_plan {
 	Py_ssize_t list_len;
-	PyObject *orig_list;
+	PyObject *orig_arr;
 	fftw_plan plan;
 	fftw_complex *input_array, *output_array;
 };
