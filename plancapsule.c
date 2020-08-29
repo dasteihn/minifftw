@@ -36,8 +36,8 @@ static void
 mfftw_cleanup_plan(struct mfftw_plan *plan)
 {
 	/* FIXME: use fftw_free */
-	free(plan->input_arr);
-	free(plan->output_arr);
+	fftw_free(plan->input_arr);
+	fftw_free(plan->output_arr);
 	fftw_destroy_plan(plan->plan);
 	Py_DECREF(plan->orig_arr);
 }

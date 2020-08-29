@@ -34,12 +34,11 @@ static PyObject *Mfftw_error = NULL;
 static int
 allocate_arrays(unsigned long long len, fftw_complex **in_arr, fftw_complex **out_arr)
 {
-	/* FIXME: Use fftw_malloc here */
-	*in_arr = calloc(len, sizeof(fftw_complex));
+	*in_arr = fftw_alloc_complex(len);
 	if (!*in_arr)
 		return -1;
 
-	*out_arr = calloc(len, sizeof(fftw_complex));
+	*out_arr = fftw_alloc_complex(len);
 	if (!*out_arr) {
 		free(*in_arr);
 		return -1;
@@ -221,10 +220,10 @@ init(PyObject *self, PyObject *args)
 static PyObject *
 finit(PyObject *self, PyObject *args)
 {
-#ifdef MFFTW_MPI
-	MPI_Finalize();
-//	fftw_mpi_cleanup();
 	puts("finalize called");
+#ifdef MFFTW_MPI
+	fftw_mpi_cleanup();
+	MPI_Finalize();
 #else
 	fftw_cleanup();	
 #endif /* MFFTW_MPI */
