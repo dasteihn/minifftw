@@ -15,20 +15,25 @@
  * You should have received a copy of the GNU General Public License
  * along with Minifftw. If not, see <http://www.gnu.org/licenses/>.
  */
+#define NPY_NO_DEPRECATED_API  NPY_1_7_API_VERSION
 
 #include <Python.h>
+#include <numpy/arrayobject.h>
 #include <stdlib.h>
 #include "minifftw.h"
 
-/* Capsule creation and destruction */
+/*
+ * ====================== Capsule creation and destruction ===================
+ */
 
 static void
 mfftw_cleanup_plan(struct mfftw_plan *plan)
 {
-	free(plan->input_array);
-	free(plan->output_array);
+	/* FIXME: use fftw_free */
+	free(plan->input_arr);
+	free(plan->output_arr);
 	fftw_destroy_plan(plan->plan);
-	Py_DECREF(plan->orig_list);
+	Py_DECREF(plan->orig_arr);
 }
 
 
@@ -56,7 +61,7 @@ mfftw_create_capsule(struct mfftw_plan *mplan)
  * The capsule-struct will also contain the python-list, so we call INCREF.
  */
 static struct mfftw_plan *
-mfftw_create_capsule_struct(fftw_plan plan, PyObject *original_list,
+mfftw_create_capsule_struct(fftw_plan plan, PyObject *original_arr,
 		fftw_complex *in_arr, fftw_complex *out_arr)
 {
 	struct mfftw_plan *capsule = calloc(1, sizeof(struct mfftw_plan));
@@ -64,11 +69,11 @@ mfftw_create_capsule_struct(fftw_plan plan, PyObject *original_list,
 		return NULL;
 	}
 
-	capsule->list_len = PyList_Size(original_list);
-	capsule->orig_list = original_list;
-	Py_INCREF(original_list);
-	capsule->input_array = in_arr;
-	capsule->output_array = out_arr;
+	capsule->data_len = PyArray_SIZE(original_arr);
+	capsule->orig_arr = original_arr;
+	Py_INCREF(original_arr);
+	capsule->input_arr = in_arr;
+	capsule->output_arr = out_arr;
 	capsule->plan = plan;
 
 	return capsule;
@@ -80,11 +85,11 @@ mfftw_create_capsule_struct(fftw_plan plan, PyObject *original_list,
  * interact with the FFTW.
  */
 PyObject *
-mfftw_encapsulate_plan(fftw_plan plan, PyObject *orig_list,
+mfftw_encapsulate_plan(fftw_plan plan, PyObject *orig_arr,
 		fftw_complex *in_arr, fftw_complex *out_arr)
 {
 	struct mfftw_plan *mplan = NULL;
-	mplan = mfftw_create_capsule_struct(plan, orig_list, in_arr, out_arr);
+	mplan = mfftw_create_capsule_struct(plan, orig_arr, in_arr, out_arr);
 	if (!mplan)
 		return PyErr_NoMemory();
 
@@ -115,18 +120,16 @@ mfftw_unwrap_capsule(PyObject *mplan)
 int
 mfftw_prepare_for_execution(struct mfftw_plan *mplan)
 {
-	int ret = -1;
-	ret = fill_fftw_array(mplan->orig_list, mplan->input_array, mplan->list_len);
-	if (ret != 0) {
-		PyErr_SetString(PyExc_StopIteration, "Stored data list not iterable.");
-	}
-
-	return ret;
+	mfftw_data_from_npy_to_fftw(mplan->orig_arr, mplan->input_arr,
+			mplan->data_len);
+	return 0;
 }
 
 
 int
 mfftw_prepare_for_output(struct mfftw_plan *mplan)
 {
-	return mfftw_arr_to_list(mplan->orig_list, mplan->output_array, mplan->list_len);
+	mfftw_data_from_fftw_to_npy(mplan->orig_arr, mplan->output_arr,
+		mplan->data_len);
+	return 0;
 }

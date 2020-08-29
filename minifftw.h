@@ -32,21 +32,23 @@
 #define MFFTW_REAL 0
 #define MFFTW_IMAG 1
 
-bool is_complex_list(PyObject *);
-Py_complex* complex_list_to_c_array(PyObject *);
 PyObject* mfftw_encapsulate_plan(fftw_plan, PyObject*, fftw_complex*, fftw_complex*);
 struct mfftw_plan* mfftw_unwrap_capsule(PyObject *);
+
 int mfftw_prepare_for_execution(struct mfftw_plan *);
 int mfftw_prepare_for_output(struct mfftw_plan *);
-int fill_fftw_array(PyObject *, fftw_complex *, Py_ssize_t);
-int mfftw_arr_to_list(PyObject *, fftw_complex *, Py_ssize_t);
+void mfftw_data_from_npy_to_fftw(PyObject *, fftw_complex *, Py_ssize_t);
+void mfftw_data_from_fftw_to_npy(PyObject *, fftw_complex *, Py_ssize_t);
+long long check_array_and_get_length(PyObject *);
+
 char** check_get_str_array(PyObject *, int);
 
+
 struct mfftw_plan {
-	Py_ssize_t list_len;
+	Py_ssize_t data_len;
 	PyObject *orig_arr;
 	fftw_plan plan;
-	fftw_complex *input_array, *output_array;
+	fftw_complex *input_arr, *output_arr;
 };
 
 

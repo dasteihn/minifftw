@@ -15,9 +15,13 @@
  * You should have received a copy of the GNU General Public License
  * along with Minifftw. If not, see <http://www.gnu.org/licenses/>.
  */
+#define NPY_NO_DEPRECATED_API  NPY_1_7_API_VERSION
 
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
+
+#include <numpy/arrayobject.h>
+
 #include <fftw3.h>
 #include <stdio.h>
 #include <stdbool.h>
@@ -29,6 +33,7 @@ static PyObject *Mfftw_error = NULL;
 static int
 allocate_arrays(unsigned long long len, fftw_complex **in_arr, fftw_complex **out_arr)
 {
+	/* FIXME: Use fftw_malloc here */
 	*in_arr = calloc(len, sizeof(fftw_complex));
 	if (!*in_arr)
 		return -1;
@@ -43,32 +48,30 @@ allocate_arrays(unsigned long long len, fftw_complex **in_arr, fftw_complex **ou
 }
 
 
+
 static PyObject *
 plan_dft_1d(PyObject *self, PyObject *args)
 {
-	PyObject *list = NULL;
+	puts("start planning...");
+	PyObject *np_array = NULL;
 	fftw_plan plan;
 	fftw_complex *input_array = NULL, *output_array = NULL;
-	unsigned long long list_len = 0;
+	long long array_len = 0;
 	int direction, flags;
-	int ret = PyArg_ParseTuple(args, "O!ii", &PyList_Type, &list,
-			&direction, &flags);
-	if (ret == 0 || !list)
+	int ret = PyArg_ParseTuple(args, "O!ii", &PyArray_Type, &np_array,
+		&direction, &flags);
+
+	puts("passed argparse");
+	if (ret == 0 || !np_array)
 		return NULL;
 
-	if (PyList_Check(list) == 0) {
-		PyErr_SetString(PyExc_TypeError, "Expected a list of complex numbers.");
+	puts("checking length.");
+	array_len = check_array_and_get_length(np_array);
+	puts("checked length.");
+	if (array_len < 0)
 		return NULL;
-	}
-	list_len = (unsigned long long)PyList_Size(list);
 
-	if (!is_complex_list(list)) {
-		PyErr_SetString(PyExc_TypeError, "Expected a list of complex numbers.");
-		return NULL;
-	}
-	list_len = PyList_Size(list);
-
-	if (allocate_arrays(list_len, &input_array, &output_array) != 0)
+	if (allocate_arrays(array_len, &input_array, &output_array) != 0)
 		return PyErr_NoMemory();
 
 	/*
@@ -82,13 +85,15 @@ plan_dft_1d(PyObject *self, PyObject *args)
 	/*
 	 * COMM_WORLD means: All existing MPI-tasks will participate in calculating.
 	 */
-	plan = fftw_mpi_plan_dft_1d(list_len, input_array, output_array,
-			MPI_COMM_WORLD, direction, flags);
+	puts("reached planing");
+	plan = fftw_mpi_plan_dft_1d(array_len, input_array, output_array,
+		MPI_COMM_WORLD, direction, flags);
 #else
-	plan = fftw_plan_dft_1d(list_len, input_array, output_array, direction, flags);
+	plan = fftw_plan_dft_1d(array_len, input_array, output_array,
+		direction, flags);
 #endif
 
-	return mfftw_encapsulate_plan(plan, list, input_array, output_array);
+	return mfftw_encapsulate_plan(plan, np_array, input_array, output_array);
 }
 
 
@@ -113,10 +118,10 @@ execute(PyObject *self, PyObject *args)
 		return NULL;
 	}
 
-	return mplan->orig_list;
+	return (PyObject *)mplan->orig_arr;
 }
 
-
+#ifdef MFFTW_MPI
 static bool
 initialize_threaded_mpi(PyObject *argv_list)
 {
@@ -148,6 +153,7 @@ initialize_threaded_mpi(PyObject *argv_list)
 
 	return (bool)(provided >= MPI_THREAD_FUNNELED);
 }
+#endif /* MFFTW_MPI */
 
 
 static PyObject *
@@ -184,6 +190,7 @@ init(PyObject *self, PyObject *args)
 #endif /* MFFTW_MPI */
 
 	fftw_plan_with_nthreads(nr_of_threads);
+	puts("succeded with init.");
 
 	return Py_None;
 }
@@ -246,6 +253,9 @@ PyInit_minifftw(void)
 	PyModule_AddIntMacro(m, FFTW_PATIENT);
 	PyModule_AddIntMacro(m, FFTW_EXHAUSTIVE);
 	PyModule_AddIntMacro(m, FFTW_WISDOM_ONLY);
+
+	/* necessary to use numpy stuff */
+	import_array();
 
 	return m;
 }

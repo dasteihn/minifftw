@@ -15,44 +15,15 @@
  * You should have received a copy of the GNU General Public License
  * along with Minifftw.  If not, see <http://www.gnu.org/licenses/>.
  */
+#define NPY_NO_DEPRECATED_API  NPY_1_7_API_VERSION
 
 #include <Python.h>
 #include <stdbool.h>
 
+/* Import numpy and don't use the deprecated API */
+#include <numpy/arrayobject.h>
+
 #include "minifftw.h"
-
-bool
-is_complex_list(PyObject *o)
-{
-	PyObject *first_item = PyList_GetItem(o, 0);
-	return (bool)PyComplex_Check(first_item);
-}
-
-
-long long
-check_array_and_get_length(PyObject *arr)
-{
-	if (PyArray_Check(arr) == 0) {
-		PyErr_SetString(PyExc_TypeError, "Expected an numpy array.");
-		return -1;
-	}
-
-	/* For now, MFFTW will only allow 1-dimensional arrays */
-	if (PyArray_NDIM(arr) != 1) {
-		PyErr_SetString(PyExc_TypeError,
-			"Expected a 1-dimensional numpy array.");
-		return -1;
-	}
-
-	if (!PyArray_ISCOMPLEX(np_array)) {
-		PyErr_SetString(PyExc_TypeError,
-			"Expected an numpy array of complex numbers.");
-		return -1;
-	}
-
-	return (long long)PyList_Size(list);
-}
-
 
 static char *
 get_str_from_object(PyObject *o)
@@ -100,78 +71,65 @@ err_out:
 }
 
 
-static void
-fill_array(PyObject *list, Py_complex *array, Py_ssize_t total_len)
+/*
+ * ======================== Numpy Array Utility ===============================
+ */
+
+
+void
+mfftw_data_from_npy_to_fftw(PyObject *arr_np, fftw_complex *arr_fftw,
+	Py_ssize_t total_len)
 {
-	size_t i;
-	PyObject *iterator = PyObject_GetIter(list);
-	if (!iterator || PyIter_Check(iterator) == 0) {
-		return;
-	}
-	PyObject *iter_obj = NULL;
-
-	for (i = 0; (iter_obj = PyIter_Next(iterator)) && i <= total_len; i++) {
-		array[i] = PyComplex_AsCComplex(iter_obj);
-		Py_DECREF(iter_obj);
-	}
-
-	Py_DECREF(iterator);
+	void *np_raw_data = PyArray_DATA(arr_np);
+	/*
+	 * When getting the numpy array from the python space, it is ensured
+	 * that it contains complex128 data, which should always be binary
+	 * identical to the fftw_complex data type.
+	 */
+	memcpy(arr_fftw, np_raw_data, (size_t)total_len);
 }
 
 
-Py_complex *
-complex_list_to_c_array(PyObject *list)
+void 
+mfftw_data_from_fftw_to_npy(PyObject *arr_np, fftw_complex *arr_fftw,
+	Py_ssize_t total_len)
 {
-	Py_ssize_t list_len = PyList_Size(list);
-	Py_complex *array = calloc(list_len, sizeof(Py_complex));
-	if (!array) {
-		perror("complex_list_to_c_array");
-		return NULL;
-	}
-
-	fill_array(list, array, list_len);
-
-	return array;
+	void *np_raw_data = PyArray_DATA(arr_np);
+	memcpy(np_raw_data, arr_fftw, (size_t)total_len);
 }
 
-
-int
-fill_fftw_array(PyObject *list, fftw_complex *array, Py_ssize_t total_len)
+/*
+ * Check if the passed Object is a numpy array which suits our needs.
+ * For now, MFFTW will only allow 1-dimensional arrays.
+ * Returns -1 if one of our requirements is violated.
+ */
+long long
+check_array_and_get_length(PyObject *arr)
 {
-	size_t i;
-	Py_complex tmp = {0};
-	PyObject *iter_obj = NULL;
-	PyObject *iterator = PyObject_GetIter(list);
-	if (!iterator || PyIter_Check(iterator) == 0) {
+	if (arr == NULL)
+		puts("null!");
+	puts("checking array quality.");
+	if (PyArray_CheckExact(arr) == 0) {
+		puts("survived checking");
+		PyErr_SetString(PyExc_TypeError, "Expected an numpy array.");
+		return -1;
+	}
+	puts("passed arraycheck");
+
+	if (PyArray_NDIM(arr) != 1) {
+		PyErr_SetString(PyExc_TypeError,
+			"Expected a 1-dimensional numpy array.");
 		return -1;
 	}
 
-	for (i = 0; (iter_obj = PyIter_Next(iterator)) && i < total_len; i++) {
-		tmp = PyComplex_AsCComplex(iter_obj);
-		array[i][MFFTW_REAL] = tmp.real;
-		array[i][MFFTW_IMAG] = tmp.imag;
-		Py_DECREF(iter_obj);
+	if (PyArray_TYPE(arr) != NPY_COMPLEX128) {
+		PyErr_SetString(PyExc_TypeError,
+			"Expected an numpy array of complex128.");
+		return -1;
 	}
+	puts("Now getting array size...");
 
-	Py_DECREF(iterator);
-	return 0;
+	return (long long)PyArray_SIZE(arr);
 }
 
 
-int
-mfftw_arr_to_list(PyObject *list, fftw_complex *array, Py_ssize_t len)
-{
-	size_t i;
-	Py_complex c_tmp = {0};
-	PyObject *py_tmp = NULL;
-
-	for (i = 0; i < len; i++) {
-		c_tmp.real = array[i][MFFTW_REAL];
-		c_tmp.imag = array[i][MFFTW_IMAG];
-		py_tmp = PyComplex_FromCComplex(c_tmp);
-		if (PyList_SetItem(list, i, py_tmp) != 0)
-			return -1;
-	}
-
-	return 0;
-}

@@ -1,4 +1,4 @@
-all:
+normal:
 	python3 setup.py build --verbose
 
 mpi:
