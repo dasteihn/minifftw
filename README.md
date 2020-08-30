@@ -6,7 +6,7 @@ achievement, it is created out of hate for existing solutions.
 Minimalistic means, that this wrapper will not wrapp every functionality the
 FFTW offers. Probably just the 1D transforms.
 
-This wrapper is tied to numpy an only accepts numpy arrays as payload.
+This wrapper is tied to numpy and only accepts numpy arrays as payload.
 
 ## Project Status
 
@@ -18,15 +18,16 @@ It is usable, though stability and performance can not be guaranteed.
 On your system, you'll need the following components:
 
 - fftw3 C-library with header files
-- fftw3\_mpi with header files
-- MPI implementation with header files
+- fftw3\_mpi C-library with header files
+- MPI implementation (i.e. openMPI) with header files
 
-OpenMP is **not** required, as this wrapper uses the FFTW with POSIX threads.
+OpenMP (without 'I') is **not** required, as this wrapper uses the FFTW with POSIX threads.
 
 ## Building
 
 - `make normal` for a wrapper around the serial FFTW
 - `make mpi` for a wrapper around the MPI-FFTW, usable i.e. on clusters
+
 
 ## Usage
 
@@ -60,6 +61,10 @@ mfftw functions.
 
 Once you are done transforming everything you wanted, call the finit() function
 to terminate MPI properly.
+
+> Note that currently the MPI-version will terminate your whole program when you
+call finit(). This is a workaround solution for some (not very well understood...)
+problem terminating the whole MPI suite.
 
 > **Note**: You can and *should* call init() and finit() regardless wethetr you
 use the MPI version or not. This way, you will never have to adjust your python
