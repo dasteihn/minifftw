@@ -130,6 +130,23 @@ export_wisdom(PyObject *self, PyObject *args)
 }
 
 
+PyObject *
+export_wisdom(PyObject *self, PyObject *args)
+{
+	char *wisdom_path = NULL;
+	if (PyArg_ParseTuple(args, "s", &wisdom_path) != 0)
+		return NULL;
+	if (fftw_export_wisdom_to_filename(wisdom_path) != 0) {
+		Mfftw_error = PyErr_NewException("minifftw.wisdomerror",
+				NULL, NULL);
+		PyErr_SetString(Mfftw_error, "fftw-wisdom can not be stored.");
+		return NULL;
+	}
+
+	return Py_None;
+}
+
+
 static PyObject *
 execute(PyObject *self, PyObject *args)
 {
