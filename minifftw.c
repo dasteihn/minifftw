@@ -25,6 +25,7 @@
 
 #include <fftw3.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <stdbool.h>
 
 #include "minifftw.h"
@@ -217,6 +218,17 @@ finit(PyObject *self, PyObject *args)
 	fftw_cleanup();	
 #endif /* MFFTW_MPI */
 
+/*
+ * Currently, there exists an awkward race-condition like problem with
+ * finalizing MPI. The problem seems to disappear when you terminate the whole
+ * python interpreter from the python-extension.
+ * The problem seems only to exist when using MPI-fftw in python, whereas a plain
+ * C-application runs just fine. This might mean that the python interpreter
+ * process might play some role in the phenomenon.
+ *
+ * TODO: Find out if there is a better solution.
+ */
+	exit(EXIT_SUCCESS);
 	return Py_None;
 }
 
