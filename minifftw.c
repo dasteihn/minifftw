@@ -96,6 +96,40 @@ plan_dft_1d(PyObject *self, PyObject *args)
 }
 
 
+PyObject *
+import_wisdom(PyObject *self, PyObject *args)
+{
+	char *wisdom_path = NULL;
+	if (PyArg_ParseTuple(args, "s", &wisdom_path) != 0)
+		return NULL;
+	if (fftw_import_wisdom_from_filename(wisdom_path) != 0) {
+		Mfftw_error = PyErr_NewException("minifftw.wisdomerror",
+				NULL, NULL);
+		PyErr_SetString(Mfftw_error, "fftw-wisdom can not be imported.");
+		return NULL;
+	}
+
+	return Py_None;
+}
+
+
+PyObject *
+export_wisdom(PyObject *self, PyObject *args)
+{
+	char *wisdom_path = NULL;
+	if (PyArg_ParseTuple(args, "s", &wisdom_path) != 0)
+		return NULL;
+	if (fftw_export_wisdom_to_filename(wisdom_path) != 0) {
+		Mfftw_error = PyErr_NewException("minifftw.wisdomerror",
+				NULL, NULL);
+		PyErr_SetString(Mfftw_error, "fftw-wisdom can not be stored.");
+		return NULL;
+	}
+
+	return Py_None;
+}
+
+
 static PyObject *
 execute(PyObject *self, PyObject *args)
 {
@@ -197,6 +231,16 @@ finit(PyObject *self, PyObject *args)
 #ifdef MFFTW_MPI
 	fftw_mpi_cleanup();
 	MPI_Finalize();
+/*
+ * Currently, there exists an awkward race-condition like problem with
+ * finalizing MPI. The problem seems to disappear when you terminate the whole
+ * python interpreter from the python-extension.
+ * The problem seems only to exist when using MPI-fftw in python, whereas a plain
+ * C-application runs just fine. This might mean that the python interpreter
+ * process might play some role in the phenomenon.
+ *
+ * TODO: Find out if there is a better solution.
+ */
 	exit(EXIT_SUCCESS);
 #else
 	fftw_cleanup();	
@@ -215,6 +259,10 @@ static PyMethodDef Minifftw_methods[] = {
 	{"finit", finit, METH_VARARGS, "finalize everything"},
 	{"plan_dft_1d", plan_dft_1d, METH_VARARGS, "one dimensional FFTW"},
 	{"execute", execute, METH_VARARGS, "execute a previously created plan"},
+	{"import_wisdom", import_wisdom, METH_VARARGS,
+		"import the FFTW wisdom from a filename/path"},
+	{"export_wisdom", export_wisdom, METH_VARARGS,
+		"export the FFTW wisdom to a filename/path"},
 	{NULL, NULL, 0, NULL},
 };
 
