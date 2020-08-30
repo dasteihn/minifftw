@@ -19,7 +19,7 @@
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
 
-#define NPY_NO_DEPRECATED_API  NPY_1_7_API_VERSION
+#define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
 #define PY_ARRAY_UNIQUE_SYMBOL mfftw_ARRAY_API
 #include <numpy/arrayobject.h>
 
@@ -52,7 +52,6 @@ allocate_arrays(unsigned long long len, fftw_complex **in_arr, fftw_complex **ou
 static PyObject *
 plan_dft_1d(PyObject *self, PyObject *args)
 {
-	puts("start planning...");
 	PyObject *tmp = NULL;
 	PyArrayObject *np_array = NULL;
 	fftw_plan plan;
@@ -62,7 +61,6 @@ plan_dft_1d(PyObject *self, PyObject *args)
 	int ret = PyArg_ParseTuple(args, "O!ii", &PyArray_Type, &tmp,
 		&direction, &flags);
 
-	puts("passed argparse");
 	if (ret == 0 || !tmp)
 		return NULL;
 
@@ -71,9 +69,7 @@ plan_dft_1d(PyObject *self, PyObject *args)
 	if (!np_array)
 		return NULL;
 
-	puts("checking length.");
 	array_len = check_array_and_get_length(np_array);
-	puts("checked length.");
 	if (array_len < 0)
 		return NULL;
 
@@ -91,7 +87,6 @@ plan_dft_1d(PyObject *self, PyObject *args)
 	/*
 	 * COMM_WORLD means: All existing MPI-tasks will participate in calculating.
 	 */
-	puts("reached planing");
 	plan = fftw_mpi_plan_dft_1d(array_len, input_array, output_array,
 		MPI_COMM_WORLD, direction, flags);
 #else
@@ -104,7 +99,7 @@ plan_dft_1d(PyObject *self, PyObject *args)
 
 
 void
-debug_print(struct mfftw_plan *mplan)
+debug_array_print(struct mfftw_plan *mplan)
 {
 	for (int i = 0; i < mplan->data_len; i++) {
 		printf("%lf + %lfj", mplan->input_arr[i][0],
@@ -132,12 +127,9 @@ execute(PyObject *self, PyObject *args)
 		return NULL;
 
 	fftw_execute(mplan->plan);
-	puts("executed plan");
 	if (mfftw_prepare_for_output(mplan) != 0) {
-		puts("getting data back failed.");
 		return NULL;
 	}
-	debug_print(mplan);
 
 	return (PyObject *)mplan->orig_arr;
 }
@@ -169,7 +161,6 @@ initialize_threaded_mpi(PyObject *argv_list)
 	 * FUNNELED means: Only the main thread will make MPI-calls
 	 */
 	MPI_Init_thread(&passed_argc, &passed_argv, MPI_THREAD_FUNNELED, &provided);
-	puts("init called");
 	free(passed_argv);
 
 	return (bool)(provided >= MPI_THREAD_FUNNELED);
@@ -211,7 +202,6 @@ init(PyObject *self, PyObject *args)
 #endif /* MFFTW_MPI */
 
 	fftw_plan_with_nthreads(nr_of_threads);
-	puts("succeded with init.");
 
 	return Py_None;
 }
@@ -220,7 +210,6 @@ init(PyObject *self, PyObject *args)
 static PyObject *
 finit(PyObject *self, PyObject *args)
 {
-	puts("finalize called");
 #ifdef MFFTW_MPI
 	fftw_mpi_cleanup();
 	MPI_Finalize();

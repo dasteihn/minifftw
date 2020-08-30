@@ -32,13 +32,13 @@ get_str_from_object(PyObject *o)
 	char *ret = NULL;
 
 	if (!PyUnicode_Check(o)) {
-		PyErr_SetString(PyExc_TypeError, "Could not parse argv string 0.");
+		PyErr_SetString(PyExc_TypeError, "Could not parse argv string.");
 		return NULL;
 	}
 
 	ret = (char *)PyUnicode_DATA(o);
 	if (!ret)
-		PyErr_SetString(PyExc_TypeError, "Could not parse argv string 1.");
+		PyErr_SetString(PyExc_TypeError, "Could not parse argv string.");
 
 	return ret;
 }
@@ -97,7 +97,6 @@ mfftw_data_from_fftw_to_npy(PyArrayObject *arr_np, fftw_complex *arr_fftw,
 {
 	void *np_raw_data = PyArray_DATA(arr_np);
 	memcpy(np_raw_data, arr_fftw, (size_t)total_len);
-	puts("memcopied stuff!");
 }
 
 /*
@@ -108,15 +107,10 @@ mfftw_data_from_fftw_to_npy(PyArrayObject *arr_np, fftw_complex *arr_fftw,
 long long
 check_array_and_get_length(PyArrayObject *arr)
 {
-	if (arr == NULL)
-		puts("null!");
-	puts("checking array quality.");
 	if (PyArray_CheckExact(arr) == 0) {
-		puts("survived checking");
 		PyErr_SetString(PyExc_TypeError, "Expected an numpy array.");
 		return -1;
 	}
-	puts("passed arraycheck");
 
 	if (PyArray_NDIM(arr) != 1) {
 		PyErr_SetString(PyExc_TypeError,
@@ -129,7 +123,6 @@ check_array_and_get_length(PyArrayObject *arr)
 			"Expected an numpy array of complex128.");
 		return -1;
 	}
-	puts("Now getting array size...");
 
 	return (long long)PyArray_SIZE(arr);
 }

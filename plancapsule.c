@@ -117,12 +117,11 @@ mfftw_unwrap_capsule(PyObject *mplan)
 	}
 	struct mfftw_plan *plan =
 		(struct mfftw_plan *)PyCapsule_GetPointer(mplan, NULL);
-	// TODO error handling?
 	return plan;
 }
 
 
-/* Actually copies the contents of the python list into the C array */
+/* Actually copies the contents of the numpy array into the C array */
 int
 mfftw_prepare_for_execution(struct mfftw_plan *mplan)
 {
@@ -141,7 +140,6 @@ mfftw_prepare_for_output(struct mfftw_plan *mplan)
 	void *np_raw = PyArray_DATA(mplan->orig_arr);
 	if (!np_raw)
 		return -1;
-	printf("data len: %i\n", mplan->data_len);
 	memcpy(np_raw, mplan->output_arr,
 		mplan->data_len * sizeof(fftw_complex));
 	return 0;
