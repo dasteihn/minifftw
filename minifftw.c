@@ -23,7 +23,6 @@
 #define PY_ARRAY_UNIQUE_SYMBOL mfftw_ARRAY_API
 #include <numpy/arrayobject.h>
 
-#include <fftw3.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
