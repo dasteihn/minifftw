@@ -23,6 +23,16 @@
 #include <Python.h>
 #include <stdbool.h>
 
+/*
+ * Importing complex.h /before/ any fftw header enforces full binary compatiblity
+ * between fftw-complex and C-complex.
+ * According to the numpy docu
+ * https://numpy.org/doc/stable/user/basics.types.html?highlight=complex128
+ * this is identical to numpy-complex128 which allows us to easily convert
+ * between the types, without iterating over huge arrays.
+ */
+#include <complex.h>
+
 #ifdef MFFTW_MPI
 #include <fftw3-mpi.h>
 #else
