@@ -31,57 +31,48 @@
 
 static PyObject *Mfftw_error = NULL;
 
+
 static int
-allocate_arrays(unsigned long long len, fftw_complex **in_arr, fftw_complex **out_arr)
+prepare_arrays(PyObject *tmp1, PyObject *tmp2,
+		PyArrayObject **arr1, PyArrayObject **arr2)
 {
-	*in_arr = fftw_alloc_complex(len);
-	if (!*in_arr)
+	*arr1 = (PyArrayObject *)PyArray_FROM_OTF(tmp1, NPY_COMPLEX128,
+			NPY_ARRAY_IN_ARRAY);
+	*arr2 = (PyArrayObject *)PyArray_FROM_OTF(tmp2, NPY_COMPLEX128,
+			NPY_ARRAY_IN_ARRAY);
+	if (!*arr1 || !*arr2)
 		return -1;
 
-	*out_arr = fftw_alloc_complex(len);
-	if (!*out_arr) {
-		free(*in_arr);
+	array_len = check_array_and_get_length(*arr1);
+	if (array_len < 0)
 		return -1;
-	}
+	array_len = check_array_and_get_length(*arr2);
+	if (array_len < 0)
+		return -1;
 
 	return 0;
 }
 
 
-
 static PyObject *
 plan_dft_1d(PyObject *self, PyObject *args)
 {
-	PyObject *tmp = NULL;
-	PyArrayObject *np_array = NULL;
+	PyObject *tmp1 = NULL, *tmp2 = NULL;
 	fftw_plan plan;
 	fftw_complex *input_array = NULL, *output_array = NULL;
 	long long array_len = 0;
 	int direction, flags;
-	int ret = PyArg_ParseTuple(args, "O!ii", &PyArray_Type, &tmp,
-		&direction, &flags);
+	int ret = PyArg_ParseTuple(args, "O!O!ii", &PyArray_Type, &tmp1,
+		&PyArray_Type, &tmp2, &direction, &flags);
 
-	if (ret == 0 || !tmp)
+	if (ret == 0 || !tmp1 || !tmp2)
 		return NULL;
 
-	np_array = (PyArrayObject *)PyArray_FROM_OTF(tmp, NPY_COMPLEX128,
-			NPY_ARRAY_IN_ARRAY);
-	if (!np_array)
+	ret = prepare_arrays(tmp1, tmp2, &input_array, &output_array);
+	if (ret != 0) {
+		PyErr_SetString(Mfftw_error, "Could not prepare arrays.");
 		return NULL;
-
-	array_len = check_array_and_get_length(np_array);
-	if (array_len < 0)
-		return NULL;
-
-	if (allocate_arrays(array_len, &input_array, &output_array) != 0)
-		return PyErr_NoMemory();
-
-	/*
-	 * currently, we allocate one array more than necessary, since we
-	 * return output data directly to the python list. So we allow the FFTW
-	 * to use the input array as it pleases, to be quicker (possibly).
-	 */
-	flags |= FFTW_DESTROY_INPUT;
+	}
 
 #ifdef MFFTW_MPI
 	/*
