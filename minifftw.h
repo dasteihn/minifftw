@@ -56,9 +56,8 @@ char** check_get_str_array(PyObject *, int);
 
 struct mfftw_plan {
 	Py_ssize_t data_len;
-	PyArrayObject *orig_arr;
 	fftw_plan plan;
-	fftw_complex *input_arr, *output_arr;
+	PyArrayObject *in_arr, *out_arr;
 };
 
 

@@ -67,7 +67,7 @@ mfftw_create_capsule(struct mfftw_plan *mplan)
  * The capsule-struct will also contain the python-list, so we call INCREF.
  */
 static struct mfftw_plan *
-mfftw_create_capsule_struct(fftw_plan plan, PyArrayObject *original_arr,
+mfftw_create_capsule_struct(fftw_plan plan,
 		fftw_complex *in_arr, fftw_complex *out_arr)
 {
 	struct mfftw_plan *capsule = calloc(1, sizeof(struct mfftw_plan));
@@ -76,10 +76,9 @@ mfftw_create_capsule_struct(fftw_plan plan, PyArrayObject *original_arr,
 	}
 
 	capsule->data_len = PyArray_SIZE(original_arr);
-	capsule->orig_arr = original_arr;
 	Py_INCREF(original_arr);
-	capsule->input_arr = in_arr;
-	capsule->output_arr = out_arr;
+	capsule->in_arr = in_arr;
+	capsule->out_arr = out_arr;
 	capsule->plan = plan;
 
 	return capsule;
@@ -91,11 +90,10 @@ mfftw_create_capsule_struct(fftw_plan plan, PyArrayObject *original_arr,
  * interact with the FFTW.
  */
 PyObject *
-mfftw_encapsulate_plan(fftw_plan plan, PyArrayObject *orig_arr,
-		fftw_complex *in_arr, fftw_complex *out_arr)
+mfftw_encapsulate_plan(fftw_plan plan, fftw_complex *in_arr, fftw_complex *out_arr)
 {
 	struct mfftw_plan *mplan = NULL;
-	mplan = mfftw_create_capsule_struct(plan, orig_arr, in_arr, out_arr);
+	mplan = mfftw_create_capsule_struct(plan, in_arr, out_arr);
 	if (!mplan)
 		return PyErr_NoMemory();
 

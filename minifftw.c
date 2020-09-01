@@ -32,10 +32,11 @@
 static PyObject *Mfftw_error = NULL;
 
 
-static int
+static long long
 prepare_arrays(PyObject *tmp1, PyObject *tmp2,
 		PyArrayObject **arr1, PyArrayObject **arr2)
 {
+	long long array_len1 = 0, array_len2 = 0;
 	*arr1 = (PyArrayObject *)PyArray_FROM_OTF(tmp1, NPY_COMPLEX128,
 			NPY_ARRAY_IN_ARRAY);
 	*arr2 = (PyArrayObject *)PyArray_FROM_OTF(tmp2, NPY_COMPLEX128,
@@ -43,14 +44,23 @@ prepare_arrays(PyObject *tmp1, PyObject *tmp2,
 	if (!*arr1 || !*arr2)
 		return -1;
 
-	array_len = check_array_and_get_length(*arr1);
-	if (array_len < 0)
+	/* One of the arrays is intentionally NULL / None,
+	 * so we'll make an inplace transform */
+	if (!*arr1)
+		*arr1 = *arr2;
+	else if (!*arr2)
+		*arr2 = *arr1;
+
+	array_len1 = check_array_and_get_length(*arr1);
+	if (array_len1 < 0)
 		return -1;
-	array_len = check_array_and_get_length(*arr2);
-	if (array_len < 0)
+	array_len2 = check_array_and_get_length(*arr2);
+	if (array_len2 < 0)
+		return -1;
+	if (array_len1 != array_len2)
 		return -1;
 
-	return 0;
+	return array_len1;
 }
 
 
@@ -62,13 +72,13 @@ plan_dft_1d(PyObject *self, PyObject *args)
 	fftw_complex *input_array = NULL, *output_array = NULL;
 	long long array_len = 0;
 	int direction, flags;
-	int ret = PyArg_ParseTuple(args, "O!O!ii", &PyArray_Type, &tmp1,
+	PyArg_ParseTuple(args, "O!O!ii", &PyArray_Type, &tmp1,
 		&PyArray_Type, &tmp2, &direction, &flags);
 
-	if (ret == 0 || !tmp1 || !tmp2)
+	if (!tmp1 && !tmp2)
 		return NULL;
 
-	ret = prepare_arrays(tmp1, tmp2, &input_array, &output_array);
+	array_len = prepare_arrays(tmp1, tmp2, &input_array, &output_array);
 	if (ret != 0) {
 		PyErr_SetString(Mfftw_error, "Could not prepare arrays.");
 		return NULL;
@@ -78,6 +88,7 @@ plan_dft_1d(PyObject *self, PyObject *args)
 	/*
 	 * COMM_WORLD means: All existing MPI-tasks will participate in calculating.
 	 */
+	// FIXME Cast the arrays to fftw_complex
 	plan = fftw_mpi_plan_dft_1d(array_len, input_array, output_array,
 		MPI_COMM_WORLD, direction, flags);
 #else
@@ -85,7 +96,7 @@ plan_dft_1d(PyObject *self, PyObject *args)
 		direction, flags);
 #endif
 
-	return mfftw_encapsulate_plan(plan, np_array, input_array, output_array);
+	return mfftw_encapsulate_plan(plan, input_array, output_array);
 }
 
 
@@ -101,6 +112,7 @@ debug_array_print(struct mfftw_plan *mplan)
 				mplan->output_arr[i][1]);
 	}
 }
+
 
 static PyObject *
 execute(PyObject *self, PyObject *args)
