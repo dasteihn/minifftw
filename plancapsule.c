@@ -25,7 +25,6 @@
 #include <numpy/arrayobject.h>
 
 #include <stdlib.h>
-#include <string.h> /* for memcpy */
 #include "minifftw.h"
 
 /*
