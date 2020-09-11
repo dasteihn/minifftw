@@ -13,6 +13,31 @@ This wrapper is tied to numpy and only accepts numpy arrays as payload.
 This project is work in progress and currently in late alpha state.
 It is usable, though stability and performance can not be guaranteed.
 
+### Python and the Message Passing Interface
+
+There is one major problem: Programs using MPI *should* be compiled using an
+MPI-compiler, which takes care of correctly linking your program with your
+targets MPI libraries.
+
+'Should' means that the MPI-C-Compiler becomes most necessary when the MPI libraries
+and headers are not treated as every other C-library on your system.
+
+While you can command the python setup utility to build
+with a different compiler (i.e. mpicc), the python toolchain will always ignore
+the last buildstep in which the shared object will be generated.
+
+The reason is, apparently, that the toolchain tries to ensure that each
+extension is always build with the same compiler and compiler configuration
+as the python interpreter was, to guarantee binary compatiblity.
+
+**What does this mean for me, the enduser?**
+
+If your system deploys everything needed for MPI in the standard UNIX paths such
+as usr/lib: Nothing.
+
+If your system is, however, for example a Linux cluster with a very customized
+module and library system, you 
+
 ## Requirements
 
 On your system, you'll need the following components:
