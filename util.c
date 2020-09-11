@@ -82,27 +82,6 @@ reinterpret_numpy_to_fftw_arr(PyArrayObject *np)
 	return (fftw_complex *)PyArray_DATA(np);
 }
 
-void
-mfftw_data_from_npy_to_fftw(PyArrayObject *arr_np, fftw_complex *arr_fftw,
-	Py_ssize_t total_len)
-{
-	void *np_raw_data = PyArray_DATA(arr_np);
-	/*
-	 * When getting the numpy array from the python space, it is ensured
-	 * that it contains complex128 data, which should always be binary
-	 * identical to the fftw_complex data type.
-	 */
-	memcpy(arr_fftw, np_raw_data, (size_t)total_len);
-}
-
-
-void 
-mfftw_data_from_fftw_to_npy(PyArrayObject *arr_np, fftw_complex *arr_fftw,
-	Py_ssize_t total_len)
-{
-	void *np_raw_data = PyArray_DATA(arr_np);
-	memcpy(np_raw_data, arr_fftw, (size_t)total_len);
-}
 
 /*
  * Check if the passed Object is a numpy array which suits our needs.
