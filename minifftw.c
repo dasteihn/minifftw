@@ -63,11 +63,11 @@ plan_dft_1d(PyObject *self, PyObject *args)
 	PyArrayObject *py_in_arr = NULL, *py_out_arr = NULL;
 	fftw_complex *mfftw_in_arr = NULL, *mfftw_out_arr = NULL;
 	long long array_len = 0;
-	int direction, flags;
-	PyArg_ParseTuple(args, "O!O!ii", &PyArray_Type, &tmp1,
+	int success = 0, direction, flags;
+	success = PyArg_ParseTuple(args, "O!O!ii", &PyArray_Type, &tmp1,
 		&PyArray_Type, &tmp2, &direction, &flags);
 
-	if (!tmp1 || !tmp2)
+	if (success = 0)
 		return NULL;
 
 	array_len = prepare_arrays(tmp1, tmp2, &py_in_arr, &py_out_arr);
@@ -124,8 +124,8 @@ execute(PyObject *self, PyObject *args)
 	struct mfftw_plan *mplan = NULL;
 	PyObject *plancapsule = NULL;
 	/* TODO: Check for capsule type */
-	int ret = PyArg_ParseTuple(args, "O", &plancapsule);
-	if (ret == 0 || !plancapsule)
+	int success = PyArg_ParseTuple(args, "O", &plancapsule);
+	if (success == 0 || !plancapsule)
 		return NULL;
 	mplan = mfftw_unwrap_capsule(plancapsule);
 	if (!mplan)
@@ -176,9 +176,9 @@ init(PyObject *self, PyObject *args)
 	int nr_of_threads = 4;
 	PyObject *argv_list = NULL;
 
-	int ret = PyArg_ParseTuple(args, "O!i", &PyList_Type, &argv_list,
+	int success = PyArg_ParseTuple(args, "O!i", &PyList_Type, &argv_list,
 			&nr_of_threads);
-	if (ret == 0 || !argv_list)
+	if (success == 0 || !argv_list)
 		return NULL;
 
 	if (PyList_Check(argv_list) == 0) {
