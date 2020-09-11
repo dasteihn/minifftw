@@ -36,7 +36,18 @@ If your system deploys everything needed for MPI in the standard UNIX paths such
 as usr/lib: Nothing.
 
 If your system is, however, for example a Linux cluster with a very customized
-module and library system, you 
+module and library system, you might have to make adjustements. This repo so far
+'solves' the problem by using the normal python toolchain to build the first
+parts of the extension. Then, the actual python extension is build by feeding
+the hardcoded compiler flags of the last step of the python toolchain to the
+cluster's mpi-c-compiler.
+
+This solution is far from perfect, but worked for the creator of this repo. If
+you have a better solution, your patch will be very welcome.
+
+## List of supported Linux Clusters
+
+- Leibniz Rechenzentrum, CoolMUC-2
 
 ## Requirements
 
@@ -50,8 +61,19 @@ OpenMP (without 'I') is **not** required, as this wrapper uses the FFTW with POS
 
 ## Building
 
+### Conventional Targets
+
 - `make normal` for a wrapper around the serial FFTW
 - `make mpi` for a wrapper around the MPI-FFTW, usable i.e. on clusters
+
+### Linux Clusters
+
+See in /clusters/ for a list of the supported clusters. The folder also contains
+sub-READMEs which are customized to the cluster.
+
+To build, run from the main folder:
+
+`make <cluster>` or `make <cluster>-mpi`
 
 
 ## Usage
@@ -124,13 +146,6 @@ deep-copied first array.
 
 ## TODO
 
-- mmap: Use mmap instead of memcpy() to speed up data exchange between python
-and C.
-- save memory 1: Currently, creating a plan to transform 1GB of data will result
-in two additional gigabytes of RAM usage. This is partly because I'm lazy, but
-also because it allows FFTW to use the DESTROY\_INPUT mode, which is often
-benefitial to performance.
-- save memory 2: Look into the FFTW's possibilities for MPI data distribution
 - Think about exposing more of the API to the user, especially more transforms
 - Wisdom: Implement the FFTW's wisdom functionality
 
