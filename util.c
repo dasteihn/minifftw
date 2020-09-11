@@ -98,7 +98,7 @@ check_array_and_get_length(PyArrayObject *arr)
 
 	if (PyArray_NDIM(arr) != 1) {
 		PyErr_SetString(PyExc_TypeError,
-			"Expected a 1-dimensional numpy array.");
+			"Expected an one-dimensional numpy array.");
 		return -1;
 	}
 
