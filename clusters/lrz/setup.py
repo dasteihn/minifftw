@@ -8,7 +8,8 @@ module_normal = Extension('minifftw',
         sources = ['minifftw.c', 'util.c', 'plancapsule.c'],
         include_dirs = [numpy.get_include()],
         libraries = ['fftw3'],
-        extra_compile_args = [os.environ["FFTW_INC"], '-pthread', '-lfftw3_threads', '-lfftw3', '-lm'],
+        extra_compile_args = [os.environ["FFTW_INC"], '-pthread', '-lfftw3_threads',
+            '-lfftw3', '-lm'],
         extra_link_args = [os.environ["FFTW_INC"], '-lpthread', '-lfftw3_threads'],
         )
 
@@ -16,11 +17,12 @@ module_mpi = Extension('minifftw',
         sources = ['minifftw.c', 'util.c', 'plancapsule.c'],
         include_dirs = [numpy.get_include()],
         libraries = ['fftw3'],
-        extra_compile_args = [os.environ["FFTW_INC"], os.environ["FFTW_SHLIB"], os.environ.get("FFTW_MPI_LIB"),
-            os.environ.get("MPI_LIB"),
+        extra_compile_args = [os.environ["FFTW_INC"], os.environ["FFTW_SHLIB"],
+            os.environ.get("FFTW_MPI_LIB"), os.environ.get("MPI_LIB"),
             '-pthread', '-lfftw3_mpi', '-lfftw3_threads',
             '-lm', '-D MFFTW_MPI'],
-        extra_link_args = [os.environ["FFTW_INC"], '-lpthread', '-lfftw3_threads', '-lfftw3_mpi'],
+        extra_link_args = [os.environ["FFTW_INC"], '-lpthread', '-lfftw3_threads',
+            '-lfftw3_mpi'],
         )
 
 
