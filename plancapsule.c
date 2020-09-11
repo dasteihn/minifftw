@@ -35,11 +35,9 @@
 static void
 mfftw_cleanup_plan(struct mfftw_plan *plan)
 {
-	/* FIXME: use fftw_free */
-	fftw_free(plan->input_arr);
-	fftw_free(plan->output_arr);
 	fftw_destroy_plan(plan->plan);
-	Py_DECREF(plan->orig_arr);
+	Py_DECREF(plan->in_arr);
+	Py_DECREF(plan->out_arr);
 }
 
 
@@ -68,15 +66,19 @@ mfftw_create_capsule(struct mfftw_plan *mplan)
  */
 static struct mfftw_plan *
 mfftw_create_capsule_struct(fftw_plan plan,
-		fftw_complex *in_arr, fftw_complex *out_arr)
+		PyArrayObject *in_arr, PyArrayObject *out_arr)
 {
 	struct mfftw_plan *capsule = calloc(1, sizeof(struct mfftw_plan));
 	if (!capsule) {
+		/* The error is handled by the caller */
 		return NULL;
 	}
 
-	capsule->data_len = PyArray_SIZE(original_arr);
-	Py_INCREF(original_arr);
+	capsule->data_len = PyArray_SIZE(in_arr);
+	Py_INCREF(in_arr);
+	/* The arrays might be identical, but we don't care, we will also
+	 * DECREF them two times. */
+	Py_INCREF(out_arr);
 	capsule->in_arr = in_arr;
 	capsule->out_arr = out_arr;
 	capsule->plan = plan;
@@ -90,7 +92,7 @@ mfftw_create_capsule_struct(fftw_plan plan,
  * interact with the FFTW.
  */
 PyObject *
-mfftw_encapsulate_plan(fftw_plan plan, fftw_complex *in_arr, fftw_complex *out_arr)
+mfftw_encapsulate_plan(fftw_plan plan, PyArrayObject *in_arr, PyArrayObject *out_arr)
 {
 	struct mfftw_plan *mplan = NULL;
 	mplan = mfftw_create_capsule_struct(plan, in_arr, out_arr);
@@ -116,29 +118,4 @@ mfftw_unwrap_capsule(PyObject *mplan)
 	struct mfftw_plan *plan =
 		(struct mfftw_plan *)PyCapsule_GetPointer(mplan, NULL);
 	return plan;
-}
-
-
-/* Actually copies the contents of the numpy array into the C array */
-int
-mfftw_prepare_for_execution(struct mfftw_plan *mplan)
-{
-	void *np_raw = PyArray_DATA(mplan->orig_arr);
-	if (!np_raw)
-		return -1;
-	memcpy(mplan->input_arr, np_raw,
-			mplan->data_len * sizeof(fftw_complex));
-	return 0;
-}
-
-
-int
-mfftw_prepare_for_output(struct mfftw_plan *mplan)
-{
-	void *np_raw = PyArray_DATA(mplan->orig_arr);
-	if (!np_raw)
-		return -1;
-	memcpy(np_raw, mplan->output_arr,
-		mplan->data_len * sizeof(fftw_complex));
-	return 0;
 }

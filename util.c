@@ -76,6 +76,11 @@ err_out:
  * ======================== Numpy Array Utility ===============================
  */
 
+fftw_complex *
+reinterpret_numpy_to_fftw_arr(PyArrayObject *np)
+{
+	return (fftw_complex *)PyArray_DATA(np);
+}
 
 void
 mfftw_data_from_npy_to_fftw(PyArrayObject *arr_np, fftw_complex *arr_fftw,

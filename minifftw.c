@@ -69,7 +69,8 @@ plan_dft_1d(PyObject *self, PyObject *args)
 {
 	PyObject *tmp1 = NULL, *tmp2 = NULL;
 	fftw_plan plan;
-	fftw_complex *input_array = NULL, *output_array = NULL;
+	PyArrayObject *py_in_arr = NULL, *py_out_arr = NULL;
+	fftw_complex *mfftw_in_arr = NULL, *mfftw_out_arr = NULL;
 	long long array_len = 0;
 	int direction, flags;
 	PyArg_ParseTuple(args, "O!O!ii", &PyArray_Type, &tmp1,
@@ -78,39 +79,51 @@ plan_dft_1d(PyObject *self, PyObject *args)
 	if (!tmp1 && !tmp2)
 		return NULL;
 
-	array_len = prepare_arrays(tmp1, tmp2, &input_array, &output_array);
-	if (ret != 0) {
+	array_len = prepare_arrays(tmp1, tmp2, &py_in_arr, &py_out_arr);
+	if (array_len < 0) {
 		PyErr_SetString(Mfftw_error, "Could not prepare arrays.");
 		return NULL;
 	}
+
+	mfftw_in_arr = reinterpret_numpy_to_fftw_arr(py_in_arr);
+	mfftw_out_arr = reinterpret_numpy_to_fftw_arr(py_out_arr);
 
 #ifdef MFFTW_MPI
 	/*
 	 * COMM_WORLD means: All existing MPI-tasks will participate in calculating.
 	 */
 	// FIXME Cast the arrays to fftw_complex
-	plan = fftw_mpi_plan_dft_1d(array_len, input_array, output_array,
+	plan = fftw_mpi_plan_dft_1d(array_len, mfftw_in_arr, mfftw_out_arr,
 		MPI_COMM_WORLD, direction, flags);
 #else
-	plan = fftw_plan_dft_1d(array_len, input_array, output_array,
+	plan = fftw_plan_dft_1d(array_len, mfftw_in_arr, mfftw_out_arr,
 		direction, flags);
 #endif
 
-	return mfftw_encapsulate_plan(plan, input_array, output_array);
+	return mfftw_encapsulate_plan(plan, py_in_arr, py_out_arr);
 }
 
 
 void
+print_complex_nr(fftw_complex nr)
+{
+	printf("%lf + %lfj ", creal(nr), cimag(nr));
+}
+
+void
 debug_array_print(struct mfftw_plan *mplan)
 {
-	for (int i = 0; i < mplan->data_len; i++) {
-		printf("%lf + %lfj", mplan->input_arr[i][0],
-				mplan->input_arr[i][1]);
+	size_t i;
+	fftw_complex *arr_in = reinterpret_numpy_to_fftw_arr(mplan->in_arr);
+	fftw_complex *arr_out = reinterpret_numpy_to_fftw_arr(mplan->out_arr);
+
+	for (i = 0; i < mplan->data_len; i++) {
+		print_complex_nr(arr_in[i]);
 	}
-	for (int i = 0; i < mplan->data_len; i++) {
-		printf("%lf + %lfj", mplan->output_arr[i][0],
-				mplan->output_arr[i][1]);
+	for (i = 0; i < mplan->data_len; i++) {
+		print_complex_nr(arr_out[i]);
 	}
+	printf("\n");
 }
 
 
@@ -126,16 +139,11 @@ execute(PyObject *self, PyObject *args)
 	if (!mplan)
 		return NULL;
 
-	if (mfftw_prepare_for_execution(mplan) != 0)
-		return NULL;
-
 	fftw_execute(mplan->plan);
-	if (mfftw_prepare_for_output(mplan) != 0) {
-		return NULL;
-	}
 
-	return (PyObject *)mplan->orig_arr;
+	return (PyObject *)mplan->out_arr;
 }
+
 
 #ifdef MFFTW_MPI
 static bool
@@ -236,7 +244,11 @@ finit(PyObject *self, PyObject *args)
 
 
 static PyMethodDef Minifftw_methods[] = {
-	{"init", init, METH_VARARGS, "prepare FFTW and (if desired) MPI"},
+#ifdef MFFTW_MPI
+	{"init", init, METH_VARARGS, "prepare FFTW and  MPI"},
+#else
+	{"init", init, METH_VARARGS, "prepare FFTW"},
+#endif /* MFFTW_MPI */
 	{"finit", finit, METH_VARARGS, "finalize everything"},
 	{"plan_dft_1d", plan_dft_1d, METH_VARARGS, "one dimensional FFTW"},
 	{"execute", execute, METH_VARARGS, "execute a previously created plan"},

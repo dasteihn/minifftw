@@ -42,14 +42,13 @@
 #define MFFTW_REAL 0
 #define MFFTW_IMAG 1
 
-PyObject* mfftw_encapsulate_plan(fftw_plan, PyArrayObject*, fftw_complex*, fftw_complex*);
+PyObject* mfftw_encapsulate_plan(fftw_plan, PyArrayObject*, PyArrayObject*);
 struct mfftw_plan* mfftw_unwrap_capsule(PyObject *);
 
-int mfftw_prepare_for_execution(struct mfftw_plan *);
-int mfftw_prepare_for_output(struct mfftw_plan *);
 void mfftw_data_from_npy_to_fftw(PyArrayObject *, fftw_complex *, Py_ssize_t);
 void mfftw_data_from_fftw_to_npy(PyArrayObject *, fftw_complex *, Py_ssize_t);
 long long check_array_and_get_length(PyArrayObject *);
+fftw_complex* reinterpret_numpy_to_fftw_arr(PyArrayObject *np);
 
 char** check_get_str_array(PyObject *, int);
 
