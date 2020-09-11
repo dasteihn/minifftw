@@ -44,18 +44,12 @@ prepare_arrays(PyObject *tmp1, PyObject *tmp2,
 	if (!*arr1 || !*arr2)
 		return -1;
 
-	/* One of the arrays is intentionally NULL / None,
-	 * so we'll make an inplace transform */
-	if (!*arr1)
-		*arr1 = *arr2;
-	else if (!*arr2)
-		*arr2 = *arr1;
+	if (*arr1 == *arr2)
+		puts("doing inplace transform");
 
 	array_len1 = check_array_and_get_length(*arr1);
-	if (array_len1 < 0)
-		return -1;
 	array_len2 = check_array_and_get_length(*arr2);
-	if (array_len2 < 0)
+	if (array_len1 < 0 || array_len2 < 0)
 		return -1;
 	if (array_len1 != array_len2)
 		return -1;
@@ -75,11 +69,15 @@ plan_dft_1d(PyObject *self, PyObject *args)
 	int direction, flags;
 	PyArg_ParseTuple(args, "O!O!ii", &PyArray_Type, &tmp1,
 		&PyArray_Type, &tmp2, &direction, &flags);
+	puts("parsed stuff");
 
-	if (!tmp1 && !tmp2)
+	if (!tmp1 || !tmp2) {
+		puts("returning...");
 		return NULL;
+	}
 
 	array_len = prepare_arrays(tmp1, tmp2, &py_in_arr, &py_out_arr);
+	puts("left prep arrays");
 	if (array_len < 0) {
 		PyErr_SetString(Mfftw_error, "Could not prepare arrays.");
 		return NULL;
@@ -132,6 +130,7 @@ execute(PyObject *self, PyObject *args)
 {
 	struct mfftw_plan *mplan = NULL;
 	PyObject *plancapsule = NULL;
+	/* TODO: Check for capsule type */
 	int ret = PyArg_ParseTuple(args, "O", &plancapsule);
 	if (ret == 0 || !plancapsule)
 		return NULL;
@@ -168,9 +167,7 @@ initialize_threaded_mpi(PyObject *argv_list)
 	if (!passed_argv)
 		return false;
 
-	/*
-	 * FUNNELED means: Only the main thread will make MPI-calls
-	 */
+	 /* FUNNELED means: Only the main thread will make MPI-calls */
 	MPI_Init_thread(&passed_argc, &passed_argv, MPI_THREAD_FUNNELED, &provided);
 	free(passed_argv);
 
@@ -274,7 +271,7 @@ PyInit_minifftw(void)
 	if (!m)
 		return NULL;
 
-	Mfftw_error = PyErr_NewException("spam.error", NULL, NULL);
+	Mfftw_error = PyErr_NewException("minifftw.error", NULL, NULL);
 	Py_XINCREF(Mfftw_error);
 	if (PyModule_AddObject(m, "error", Mfftw_error) < 0) {
 		Py_XDECREF(Mfftw_error);
