@@ -44,9 +44,6 @@ prepare_arrays(PyObject *tmp1, PyObject *tmp2,
 	if (!*arr1 || !*arr2)
 		return -1;
 
-	if (*arr1 == *arr2)
-		puts("doing inplace transform");
-
 	array_len1 = check_array_and_get_length(*arr1);
 	array_len2 = check_array_and_get_length(*arr2);
 	if (array_len1 < 0 || array_len2 < 0)
@@ -69,15 +66,11 @@ plan_dft_1d(PyObject *self, PyObject *args)
 	int direction, flags;
 	PyArg_ParseTuple(args, "O!O!ii", &PyArray_Type, &tmp1,
 		&PyArray_Type, &tmp2, &direction, &flags);
-	puts("parsed stuff");
 
-	if (!tmp1 || !tmp2) {
-		puts("returning...");
+	if (!tmp1 || !tmp2)
 		return NULL;
-	}
 
 	array_len = prepare_arrays(tmp1, tmp2, &py_in_arr, &py_out_arr);
-	puts("left prep arrays");
 	if (array_len < 0) {
 		PyErr_SetString(Mfftw_error, "Could not prepare arrays.");
 		return NULL;
