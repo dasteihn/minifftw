@@ -15,7 +15,7 @@ the largest array you'll be able to transform is 40GB large. Have a look at
 [mpi.md](./doc/mpi.md) for details.
 
 
-![minifftw callstack](doc/fftw-calls.png)
+![minifftw callstack](doc/images/fftw-calls.png)
 
 Minifftw is a wrapper either around the fftw3, or fftw3-mpi, depending on how
 you build it.
