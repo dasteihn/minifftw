@@ -1,5 +1,6 @@
 from distutils.core import setup, Extension
 import os
+import numpy
 
 module_normal = Extension('minifftw',
         include_dirs = [numpy.get_include()],
