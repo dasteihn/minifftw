@@ -67,7 +67,7 @@ plan_dft_1d(PyObject *self, PyObject *args)
 	success = PyArg_ParseTuple(args, "O!O!ii", &PyArray_Type, &tmp1,
 		&PyArray_Type, &tmp2, &direction, &flags);
 
-	if (success = 0)
+	if (success == 0)
 		return NULL;
 
 	array_len = prepare_arrays(tmp1, tmp2, &py_in_arr, &py_out_arr);
