@@ -4,8 +4,14 @@ from distutils.core import setup, Extension
 import os
 import numpy
 
+maindir = os.environ("MFFTW_BASE")
+sourcefiles = []
+sourcefiles.append(maindir + "/minifftw.c")
+sourcefiles.append(maindir + "/plancapsule.c")
+sourcefiles.append(maindir + "/util.c")
+
 module_normal = Extension('minifftw',
-        sources = ['minifftw.c', 'util.c', 'plancapsule.c'],
+        sources = sourcefiles,
         include_dirs = [numpy.get_include()],
         libraries = ['fftw3'],
         extra_compile_args = [os.environ["FFTW_INC"], '-pthread', '-lfftw3_threads',
@@ -14,7 +20,7 @@ module_normal = Extension('minifftw',
         )
 
 module_mpi = Extension('minifftw',
-        sources = ['minifftw.c', 'util.c', 'plancapsule.c'],
+        sources = sourcefiles,
         include_dirs = [numpy.get_include()],
         libraries = ['fftw3'],
         extra_compile_args = [os.environ["FFTW_INC"], os.environ["FFTW_SHLIB"],
