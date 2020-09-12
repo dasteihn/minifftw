@@ -10,8 +10,8 @@ This wrapper is tied to numpy and only accepts numpy arrays as payload.
 
 ## Project Status
 
-This project is work in progress and currently in late alpha state.
-It is usable, though stability and performance can not be guaranteed.
+This project is work in progress and currently in beta state.
+It should be usable and stable.
 
 ### Python and the Message Passing Interface
 
@@ -109,10 +109,6 @@ mfftw functions.
 Once you are done transforming everything you wanted, call the finit() function
 to terminate MPI properly.
 
-> Note that currently the MPI-version will terminate your whole program when you
-call finit(). This is a workaround solution for some (not very well understood...)
-problem terminating the whole MPI suite.
-
 > **Note**: You can and *should* call init() and finit() regardless wethetr you
 use the MPI version or not. This way, you will never have to adjust your python
 code when using this wrapper, even when you'll run it on a cluster.
@@ -148,6 +144,10 @@ deep-copied first array.
 
 - Think about exposing more of the API to the user, especially more transforms
 - Wisdom: Implement the FFTW's wisdom functionality
+- Distributed Memory: This version does not yet support the functionality for
+real distributed memory. This means that the FFTW's `alloc_local` functions are
+not yet available. Implementing this will be especially useful when the
+multidimensional transforms get implemented.
 
 ## License
 
