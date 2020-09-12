@@ -261,6 +261,7 @@ PyInit_minifftw(void)
 		Py_DECREF(m);
 		return NULL;
 	}
+	/* Planing-rigor flags */
 	PyModule_AddIntMacro(m, FFTW_FORWARD);
 	PyModule_AddIntMacro(m, FFTW_BACKWARD);
 	PyModule_AddIntMacro(m, FFTW_ESTIMATE);
@@ -268,6 +269,10 @@ PyInit_minifftw(void)
 	PyModule_AddIntMacro(m, FFTW_PATIENT);
 	PyModule_AddIntMacro(m, FFTW_EXHAUSTIVE);
 	PyModule_AddIntMacro(m, FFTW_WISDOM_ONLY);
+
+	/* Algorithm restriction flags */
+	PyModule_AddIntMacro(m, FFTW_DESTROY_INPUT);
+
 	import_array();
 
 	return m;

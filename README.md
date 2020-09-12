@@ -8,17 +8,24 @@ FFTW offers. Probably just the 1D transforms.
 
 This wrapper is tied to numpy and only accepts numpy arrays as payload.
 
+Please note that due to a rather complicated situation with the Message Passing
+Interface, minifftw does not (yet) support real distributed memory. So if you're
+working on a cluster consisting of nodes with e.g. 40GB *available* RAM per node,
+the largest array you'll be able to transform is 40GB large. Have a look at
+[mpi.md](./doc/mpi.md) for details.
+
 
 ## Project Status
 
 This project is work in progress and currently in beta state.
-It should be usable and stable.
+It should be usable and free of errors.
 
 
 ## List of supported Linux Clusters
 
 - Leibniz Rechenzentrum, CoolMUC-2
 
+Please send a patch if you want to see your cluster supported.
 
 ## Requirements
 
@@ -26,10 +33,16 @@ On your system, you'll need the following components:
 
 - fftw3 C-library with header files
 - fftw3\_mpi C-library with header files
+- Numpy C-header files
 - MPI implementation (i.e. openMPI) with header files
 
 OpenMP (without 'I') is **not** required, as this wrapper uses the FFTW with POSIX threads.
 
+On a typical linux distro, the required packages might be called:
+
+- libfft3-mpi-dev
+- python3-numpy
+- libopenmpi-dev
 
 ## Building
 
@@ -40,8 +53,9 @@ OpenMP (without 'I') is **not** required, as this wrapper uses the FFTW with POS
 
 ### Linux Clusters
 
-See in /clusters/ for a list of the supported clusters. The folder also contains
-sub-READMEs which are customized to the cluster.
+See in clusters/ for a list of the supported clusters. The folder also contains
+sub-READMEs which are customized to the cluster and will hopefully help you
+getting the wrapper to run on your target.
 
 To build, run from the main folder:
 
@@ -50,7 +64,7 @@ To build, run from the main folder:
 
 ## Usage
 
-> See in `/tests` for examples.
+> See in `tests/` for examples.
 
 ### Basics
 
@@ -60,10 +74,14 @@ import numpy as np
 import minifftw as mfftw
 
 nr_of_threads = 8
+data_len = 2048
 
 mfftw.init(sys.argv, nr_of_threads)
-data = np.random.random(2048) + np.random.random(2048) * 1j
-plan = mfftw.plan_dft_1d(data, m.FFTW_FORWARD, m.FFTW_PATIENT)
+data_in = np.random.random(data_len) + np.random.random(data_len) * 1j
+data_out = np.zeros(data_len, dtype="complex128")
+p = m.plan_dft_1d(data_in, data_out, m.FFTW_FORWARD, m.FFTW_ESTIMATE)
+
+# the assignment is optional. mfftw.execute will fill data_out automatically
 result = mfftw.execute(plan)
 
 # ...
@@ -93,15 +111,26 @@ end user. This results in a few points which should be kept in mind:
 #### Plan Capsules
 
 `mfftw.plan_XXX` returns a python capsule (opaque data) which encapsulates
-three arrays: Your original numpy array and two fftw\_complex arrays for the 
-FFTW to operate on.
+the fftw data types, including the fftw_plan and a reference to your numpy arrays.
 
 Note the following:
 
-- Once the plan is created, you must not reallocate your numpy-aray, nor change
+- Once the plan is created, you must not reallocate your numpy-array, nor change
 its length. Violating this rule might result in undefined behavior.
 - A plan and the underlying memory gets freed once the plan gets out of scope
-(rather: is garbage collected). You could enforce this with `del(plan)`.
+(rather: is garbage collected). You could enforce this with `del(my_plan)`.
+- The capsule contains a reference to your numpy-array. Therefore, the array can
+not be garbage collected until the plan-capsule gets dropped.
+
+#### Inplace Transforms and Overwriting
+
+If input_array and output_array are identical, the wrapper resp. the fftw will
+perform an inplace transform, hence overwriting your original array.
+
+Additionally, FFTW offers you the opportunity to pass two different arrays, but
+allow the library to overwrite your input-array anyways. This might help the
+FFTW gain performance. To enable this mode, pass `minifftw.FFTW_DESTROY_INPUT`
+as a flag in the plan creation functions.
 
 
 #### Executing
