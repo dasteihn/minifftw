@@ -2,6 +2,7 @@ from distutils.core import setup, Extension
 import os
 
 module_normal = Extension('minifftw',
+        include_dirs = [numpy.get_include()],
         sources = ['minifftw.c', 'util.c', 'plancapsule.c'],
         libraries = ['fftw3'],
         extra_compile_args = ['-pthread', '-lfftw3_threads', '-lfftw3', '-lm'],
@@ -9,6 +10,7 @@ module_normal = Extension('minifftw',
         )
 
 module_mpi = Extension('minifftw',
+        include_dirs = [numpy.get_include()],
         sources = ['minifftw.c', 'util.c', 'plancapsule.c'],
         libraries = ['fftw3'],
         extra_compile_args = ['-pthread', '-lfftw3_mpi', '-lfftw3_threads',
