@@ -1,5 +1,5 @@
 normal:
-	python3 ./clusters/lrz/setup.py build --verbose
+	python3 setup.py build --verbose
 
 mpi:
 	MFFTW_MPI=1 python3 ./clusters/lrz/setup.py build --verbose

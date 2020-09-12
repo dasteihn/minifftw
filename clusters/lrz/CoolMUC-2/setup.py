@@ -4,7 +4,7 @@ from distutils.core import setup, Extension
 import os
 import numpy
 
-maindir = os.environ("MFFTW_BASE")
+maindir = os.environ["MFFTW_BASE"]
 sourcefiles = []
 sourcefiles.append(maindir + "/minifftw.c")
 sourcefiles.append(maindir + "/plancapsule.c")
