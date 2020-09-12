@@ -8,13 +8,13 @@ mpi:
 
 lrz-cm2-normal:
 	MFFTW_BASE=$(shell pwd) make -C ./clusters/lrz/CoolMUC-2 normal
-	cp ./clusters/lrz/CoolMUC-2/lib*/*.so .
+	cp ./clusters/lrz/CoolMUC-2/build/lib*/*.so .
 
 lrz-cm2-mpi:
 	MFFTW_BASE=$(shell pwd) make -C ./clusters/lrz/CoolMUC-2 mpi
-	cp ./clusters/lrz/CoolMUC-2/lib*/*.so .
+	cp ./clusters/lrz/CoolMUC-2/build/lib*/*.so .
 
 clean:
-	rm *.so
+	rm *.so || true
 	rm -rf build/
-	rm -rf clusters/lrz/build/
+	rm -rf clusters/lrz/CoolMUC-2/build/
