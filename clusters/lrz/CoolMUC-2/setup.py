@@ -30,7 +30,7 @@ module_mpi = Extension('minifftw',
 mpi_env = int(os.getenv("MFFTW_MPI", 0))
 if mpi_env == 1:
     print("building with mpi...")
-    os.environ['CC'] = "mpicc"
+    os.environ['CC'] = "mpiicc"
     main_module = module_mpi
 else:
     print("building without mpi...")
