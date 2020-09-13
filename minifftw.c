@@ -31,6 +31,8 @@
 
 static PyObject *Mfftw_error = NULL;
 
+static char *Argv = NULL;
+
 
 static long long
 prepare_arrays(PyObject *tmp1, PyObject *tmp2,
@@ -142,7 +144,6 @@ static bool
 initialize_threaded_mpi(PyObject *argv_list)
 {
 	int passed_argc = 0, provided = 0;
-	char **passed_argv = NULL;
 	printf("argc: %i\n", passed_argc);
 
 	/*
@@ -156,13 +157,12 @@ initialize_threaded_mpi(PyObject *argv_list)
 		return false;
 	}
 	printf("argc: %i\n", passed_argc);
-	passed_argv = check_get_str_array(argv_list, passed_argc);
-	if (!passed_argv)
+	Argv = check_get_str_array(argv_list, passed_argc);
+	if (!Argv)
 		return false;
 
 	 /* FUNNELED means: Only the main thread will make MPI-calls */
-	MPI_Init_thread(&passed_argc, &passed_argv, MPI_THREAD_FUNNELED, &provided);
-	free(passed_argv);
+	MPI_Init_thread(&passed_argc, &Argv, MPI_THREAD_FUNNELED, &provided);
 
 	return (bool)(provided >= MPI_THREAD_FUNNELED);
 }
@@ -212,11 +212,16 @@ static PyObject *
 finit(PyObject *self, PyObject *args)
 {
 #ifdef MFFTW_MPI
+	int rank;
+	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 	fftw_mpi_cleanup();
 	MPI_Finalize();
+	if (rank != 0)
+		exit(EXIT_SUCCESS);
 #else
 	fftw_cleanup();	
 #endif /* MFFTW_MPI */
+	free(Argv);
 
 	return Py_None;
 }
