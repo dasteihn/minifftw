@@ -100,7 +100,7 @@ PyObject *
 import_wisdom(PyObject *self, PyObject *args)
 {
 	char *wisdom_path = NULL;
-	if (PyArg_ParseTuple(args, "s", &wisdom_path) != 0)
+	if (PyArg_ParseTuple(args, "s", &wisdom_path) == 0)
 		return NULL;
 	if (fftw_import_wisdom_from_filename(wisdom_path) != 0) {
 		PyErr_SetString(Mfftw_error, "fftw-wisdom can not be imported.");
@@ -115,7 +115,7 @@ PyObject *
 export_wisdom(PyObject *self, PyObject *args)
 {
 	char *wisdom_path = NULL;
-	if (PyArg_ParseTuple(args, "s", &wisdom_path) != 0)
+	if (PyArg_ParseTuple(args, "s", &wisdom_path) == 0)
 		return NULL;
 	if (fftw_export_wisdom_to_filename(wisdom_path) != 0) {
 		PyErr_SetString(Mfftw_error, "fftw-wisdom can not be exported.");
