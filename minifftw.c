@@ -103,8 +103,6 @@ import_wisdom(PyObject *self, PyObject *args)
 	if (PyArg_ParseTuple(args, "s", &wisdom_path) != 0)
 		return NULL;
 	if (fftw_import_wisdom_from_filename(wisdom_path) != 0) {
-		Mfftw_error = PyErr_NewException("minifftw.wisdomerror",
-				NULL, NULL);
 		PyErr_SetString(Mfftw_error, "fftw-wisdom can not be imported.");
 		return NULL;
 	}
@@ -120,9 +118,7 @@ export_wisdom(PyObject *self, PyObject *args)
 	if (PyArg_ParseTuple(args, "s", &wisdom_path) != 0)
 		return NULL;
 	if (fftw_export_wisdom_to_filename(wisdom_path) != 0) {
-		Mfftw_error = PyErr_NewException("minifftw.wisdomerror",
-				NULL, NULL);
-		PyErr_SetString(Mfftw_error, "fftw-wisdom can not be stored.");
+		PyErr_SetString(Mfftw_error, "fftw-wisdom can not be exported.");
 		return NULL;
 	}
 
