@@ -92,11 +92,31 @@ plan_dft_1d(PyObject *self, PyObject *args)
 		direction, flags);
 #endif
 
+	if (!plan) {
+		PyErr_SetString(Mfftw_error, "Could not create plan.");
+		return NULL;
+	}
+
 	return mfftw_encapsulate_plan(plan, py_in_arr, py_out_arr);
 }
 
 
-PyObject *
+#ifdef MFFTW_MPI
+static PyObject *
+import_wisdom_mpi(PyObject *args)
+{    
+	int rank = 42;
+	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+	if (rank != 0)
+		return Py_None;
+
+	if fftw_import_wisdom_from_filename("mywisdom");
+	fftw_mpi_broadcast_wisdom(MPI_COMM_WORLD);
+
+}
+#endif /* MFFTW_MPI */
+
+static PyObject *
 import_wisdom(PyObject *self, PyObject *args)
 {
 	char *wisdom_path = NULL;
@@ -113,7 +133,7 @@ import_wisdom(PyObject *self, PyObject *args)
 }
 
 
-PyObject *
+static PyObject *
 export_wisdom(PyObject *self, PyObject *args)
 {
 	char *wisdom_path = NULL;
