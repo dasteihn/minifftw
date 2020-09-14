@@ -209,23 +209,20 @@ init(PyObject *self, PyObject *args)
 
 
 /*
- * Will free the FFTW's ressources and especially will terminate all MPI
- * processes except for the master process.
+ * Will free the FFTW's ressources,
+ * and especially will terminate all MPI processes.
  */
 static PyObject *
 finit(PyObject *self, PyObject *args)
 {
+	free(Argv);
 #ifdef MFFTW_MPI
-	int rank;
-	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 	fftw_mpi_cleanup();
 	MPI_Finalize();
-	if (rank != 0)
-		exit(EXIT_SUCCESS);
+	exit(EXIT_SUCCESS);
 #else
 	fftw_cleanup();	
 #endif /* MFFTW_MPI */
-	free(Argv);
 
 	return Py_None;
 }
