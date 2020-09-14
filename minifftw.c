@@ -138,7 +138,7 @@ import_wisdom(PyObject *self, PyObject *args)
 		PyErr_SetString(Mfftw_error, "fftw-wisdom can not be imported.");
 		return NULL;
 	}
-#endif MFFTW_MPI
+#endif /* MFFTW_MPI */
 
 	return Py_None;
 }
