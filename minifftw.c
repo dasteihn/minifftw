@@ -97,29 +97,6 @@ plan_dft_1d(PyObject *self, PyObject *args)
 }
 
 
-void
-print_complex_nr(fftw_complex nr)
-{
-	printf("%lf + %lfj ", creal(nr), cimag(nr));
-}
-
-void
-debug_array_print(struct mfftw_plan *mplan)
-{
-	size_t i;
-	fftw_complex *arr_in = reinterpret_numpy_to_fftw_arr(mplan->in_arr);
-	fftw_complex *arr_out = reinterpret_numpy_to_fftw_arr(mplan->out_arr);
-
-	for (i = 0; i < mplan->data_len; i++) {
-		print_complex_nr(arr_in[i]);
-	}
-	for (i = 0; i < mplan->data_len; i++) {
-		print_complex_nr(arr_out[i]);
-	}
-	printf("\n");
-}
-
-
 static PyObject *
 execute(PyObject *self, PyObject *args)
 {
