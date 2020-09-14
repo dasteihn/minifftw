@@ -103,18 +103,24 @@ plan_dft_1d(PyObject *self, PyObject *args)
 
 #ifdef MFFTW_MPI
 static PyObject *
-import_wisdom_mpi(PyObject *args)
+import_wisdom_mpi(char *wisdom)
 {    
 	int rank = 42;
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 	if (rank != 0)
 		return Py_None;
 
-	if fftw_import_wisdom_from_filename("mywisdom");
-	fftw_mpi_broadcast_wisdom(MPI_COMM_WORLD);
+	if (fftw_import_wisdom_from_filename(wisdom) != 0) {
+		fftw_mpi_broadcast_wisdom(MPI_COMM_WORLD);
+	} else {
+		PyErr_SetString(Mfftw_error, "fftw-wisdom can not be imported.");
+		return NULL;
+	}
 
+	return Py_None;
 }
 #endif /* MFFTW_MPI */
+
 
 static PyObject *
 import_wisdom(PyObject *self, PyObject *args)
@@ -122,12 +128,17 @@ import_wisdom(PyObject *self, PyObject *args)
 	char *wisdom_path = NULL;
 	if (PyArg_ParseTuple(args, "s", &wisdom_path) == 0)
 		return NULL;
-	printf("%s\n", wisdom_path);
+
+#ifdef MFFTW_MPI
+	if (!import_wisdom_mpi(wisdom_path))
+		return NULL;
+#else
 	/* fftw uses 0 as error code */
 	if (fftw_import_wisdom_from_filename(wisdom_path) == 0) {
 		PyErr_SetString(Mfftw_error, "fftw-wisdom can not be imported.");
 		return NULL;
 	}
+#endif MFFTW_MPI
 
 	return Py_None;
 }
@@ -288,7 +299,7 @@ finit(PyObject *self, PyObject *args)
 
 static PyMethodDef Minifftw_methods[] = {
 #ifdef MFFTW_MPI
-	{"init", init, METH_VARARGS, "prepare FFTW and  MPI"},
+	{"init", init, METH_VARARGS, "prepare FFTW and MPI"},
 #else
 	{"init", init, METH_VARARGS, "prepare FFTW"},
 #endif /* MFFTW_MPI */
