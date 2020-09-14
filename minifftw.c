@@ -125,7 +125,7 @@ execute(PyObject *self, PyObject *args)
 {
 	struct mfftw_plan *mplan = NULL;
 	PyObject *plancapsule = NULL;
-	/* TODO: Check for capsule type */
+	/* mfftw_unwrap will check the type */
 	int success = PyArg_ParseTuple(args, "O", &plancapsule);
 	if (success == 0 || !plancapsule)
 		return NULL;
@@ -208,6 +208,10 @@ init(PyObject *self, PyObject *args)
 }
 
 
+/*
+ * Will free the FFTW's ressources and especially will terminate all MPI
+ * processes except for the master process.
+ */
 static PyObject *
 finit(PyObject *self, PyObject *args)
 {
