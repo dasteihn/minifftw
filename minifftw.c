@@ -112,6 +112,7 @@ execute(PyObject *self, PyObject *args)
 
 	fftw_execute(mplan->plan);
 
+	Py_INCREF(mplan->out_arr);
 	return (PyObject *)mplan->out_arr;
 }
 
@@ -181,7 +182,7 @@ init(PyObject *self, PyObject *args)
 
 	fftw_plan_with_nthreads(nr_of_threads);
 
-	return Py_None;
+	Py_RETURN_NONE;
 }
 
 
@@ -201,7 +202,7 @@ finit(PyObject *self, PyObject *args)
 	fftw_cleanup();	
 #endif /* MFFTW_MPI */
 
-	return Py_None;
+	Py_RETURN_NONE;
 }
 
 
