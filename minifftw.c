@@ -85,7 +85,6 @@ plan_dft_1d(PyObject *self, PyObject *args)
 	/*
 	 * COMM_WORLD means: All existing MPI-tasks will participate in calculating.
 	 */
-	// FIXME Cast the arrays to fftw_complex
 	plan = fftw_mpi_plan_dft_1d(array_len, mfftw_in_arr, mfftw_out_arr,
 		MPI_COMM_WORLD, direction, flags);
 #else
@@ -113,7 +112,7 @@ execute(PyObject *self, PyObject *args)
 	fftw_execute(mplan->plan);
 
 	Py_INCREF(mplan->out_arr);
-	return (PyObject *)mplan->out_arr;
+	return (PyObject *)(mplan->out_arr);
 }
 
 
@@ -194,6 +193,7 @@ static PyObject *
 finit(PyObject *self, PyObject *args)
 {
 	free(Argv);
+	Argv = NULL;
 #ifdef MFFTW_MPI
 	fftw_mpi_cleanup();
 	MPI_Finalize();

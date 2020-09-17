@@ -37,6 +37,7 @@ mfftw_cleanup_plan(struct mfftw_plan *plan)
 	fftw_destroy_plan(plan->plan);
 	Py_DECREF(plan->in_arr);
 	Py_DECREF(plan->out_arr);
+	free(plan);
 }
 
 
@@ -45,7 +46,6 @@ mfftw_destroy_capsule(PyObject *capsule)
 {
 	struct mfftw_plan *plan = 
 		(struct mfftw_plan *)PyCapsule_GetPointer(capsule, NULL);
-	/* TODO error handling */
 
 	mfftw_cleanup_plan(plan);
 }
