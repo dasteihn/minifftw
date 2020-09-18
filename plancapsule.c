@@ -61,7 +61,7 @@ mfftw_create_capsule(struct mfftw_plan *mplan)
 /*
  * Creates a new capsule structure which will later be passed into the Python
  * space as a general handler struct (in form of an opaque pointer).
- * The capsule-struct will also contain the python-list, so we call INCREF.
+ * The capsule-struct will also contain the numpy-arrays, so we call INCREF.
  */
 static struct mfftw_plan *
 mfftw_create_capsule_struct(fftw_plan plan,

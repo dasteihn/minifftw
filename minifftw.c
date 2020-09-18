@@ -31,7 +31,7 @@
 
 static PyObject *Mfftw_error = NULL;
 
-static char *Argv = NULL;
+static char **Argv = NULL;
 
 
 static long long
