@@ -4,7 +4,7 @@ import time
 import numpy as np
 import random
 
-exponent = 29
+exponent = 20
 data_len = int(2**exponent)
 nr_of_threads = 4
 nr_of_loops = 100
@@ -22,11 +22,8 @@ p_bwd = m.plan_dft_1d(data_out, data_in, m.FFTW_BACKWARD, m.FFTW_PATIENT)
 # note: in productive use you should rescale the array's members as described
 # in the FFTW's documentation
 for i in range(nr_of_loops):
-    res = m.execute(p_fwd)
+    m.execute(p_fwd)
     m.execute(p_bwd)
 
-erg = m.execute(p)
-print(type(erg))
-print(len(erg))
-m.finit()
 print("Test run successfully! :)")
+m.finit()
