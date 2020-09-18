@@ -7,11 +7,11 @@ mpi:
 	cp ./build/lib*/*.so .
 
 lrz-cm2-normal:
-	MFFTW_BASE=$(shell pwd) make -C ./clusters/lrz/CoolMUC-2 normal
+	MFFTW_BASE=$(PWD) $(MAKE) -C ./clusters/lrz/CoolMUC-2 normal
 	cp ./clusters/lrz/CoolMUC-2/build/lib*/*.so .
 
 lrz-cm2-mpi:
-	MFFTW_BASE=$(shell pwd) make -C ./clusters/lrz/CoolMUC-2 mpi
+	MFFTW_BASE=$(PWD) $(MAKE) -C ./clusters/lrz/CoolMUC-2 mpi
 	cp ./clusters/lrz/CoolMUC-2/build/lib*/*.so .
 
 clean:
