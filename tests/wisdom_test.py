@@ -6,7 +6,7 @@ sys.path.append("./build/lib.linux-x86_64-3.7")
 
 import minifftw as m
 
-data_len = 16
+data_len = 2048
 m.init(sys.argv, 4)
 
 try:
@@ -17,7 +17,7 @@ except:
 
 data_in = np.random.random(data_len) + np.random.random(data_len) * 1j
 data_out = np.zeros(data_len, dtype="complex128")
-p = m.plan_dft_1d(data_in, data_out, m.FFTW_FORWARD, m.FFTW_WISDOM_ONLY)
+p = m.plan_dft_1d(data_in, data_out, m.FFTW_FORWARD, m.FFTW_PATIENT)
 erg = m.execute(p)
 
 try:
