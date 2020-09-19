@@ -102,22 +102,23 @@ plan_dft_1d(PyObject *self, PyObject *args)
 
 
 #ifdef MFFTW_MPI
-static PyObject *
+int
 import_wisdom_mpi(char *wisdom)
 {    
 	int rank = 42;
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 	if (rank != 0)
-		return Py_None;
+		return 0;
 
+	/* Look if we have Wisdom. If we do, broadcast it! */
 	if (fftw_import_wisdom_from_filename(wisdom) != 0) {
 		fftw_mpi_broadcast_wisdom(MPI_COMM_WORLD);
 	} else {
 		PyErr_SetString(Mfftw_error, "fftw-wisdom can not be imported.");
-		return NULL;
+		return -1;
 	}
 
-	return Py_None;
+	return 0;
 }
 #endif /* MFFTW_MPI */
 
@@ -130,8 +131,11 @@ import_wisdom(PyObject *self, PyObject *args)
 		return NULL;
 
 #ifdef MFFTW_MPI
-	if (!import_wisdom_mpi(wisdom_path))
+	if (import_wisdom_mpi(wisdom_path) != 0) {
+		PyErr_SetString(Mfftw_error,
+			"fftw-wisdom can not be imported over MPI.");
 		return NULL;
+	}
 #else
 	/* fftw uses 0 as error code */
 	if (fftw_import_wisdom_from_filename(wisdom_path) == 0) {
@@ -140,40 +144,48 @@ import_wisdom(PyObject *self, PyObject *args)
 	}
 #endif /* MFFTW_MPI */
 
-	return Py_None;
+	Py_RETURN_NONE;
 }
 
 
-static PyObject *
-export_wisdom(PyObject *self, PyObject *args)
+#ifdef MFFTW_MPI
+int
+export_wisdom_mpi(char *wisdom_path)
 {
-	char *wisdom_path = NULL;
-	if (PyArg_ParseTuple(args, "s", &wisdom_path) == 0)
-		return NULL;
-	/* fftw uses 0 as error code */
-	if (fftw_export_wisdom_to_filename(wisdom_path) == 0) {
-		PyErr_SetString(Mfftw_error, "fftw-wisdom can not be exported.");
-		return NULL;
-	}
+	int rank = -1, ret = 0;
+	fftw_mpi_gather_wisdom(MPI_COMM_WORLD);
+	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+	if (rank != 0)
+		return 0;
 
-	return Py_None;
+	ret = fftw_export_wisdom_to_filename(wisdom_path);
+
+	return ret == 0 ? -1 : 0;
 }
+#endif /* MFFTW_MPI */
 
 
 PyObject *
 export_wisdom(PyObject *self, PyObject *args)
 {
 	char *wisdom_path = NULL;
-	if (PyArg_ParseTuple(args, "s", &wisdom_path) != 0)
+	if (PyArg_ParseTuple(args, "s", &wisdom_path) == 0)
 		return NULL;
-	if (fftw_export_wisdom_to_filename(wisdom_path) != 0) {
-		Mfftw_error = PyErr_NewException("minifftw.wisdomerror",
-				NULL, NULL);
-		PyErr_SetString(Mfftw_error, "fftw-wisdom can not be stored.");
+
+#ifdef MFFTW_MPI
+	if (export_wisdom_mpi(wisdom_path) != 0) {
+		PyErr_SetString(Mfftw_error,
+			"Could not export the wisdom gathered over MPI.");
 		return NULL;
 	}
+#else
+	if (fftw_export_wisdom_to_filename(wisdom_path) == 0) {
+		PyErr_SetString(Mfftw_error, "fftw-wisdom can not be exported.");
+		return NULL;
+	}
+#endif /* MFFTW_MPI */
 
-	return Py_None;
+	Py_RETURN_NONE;
 }
 
 
