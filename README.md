@@ -85,6 +85,48 @@ To build, run from the main folder:
 
 > See in `tests/` for examples.
 
+### Functions
+
+#### init
+
+`minifftw.init(sys.argv, nr_of_threads`
+
+**Parameters:**
+
+- sys.argv: List of strings
+- nr\_of\_threads: Integer indicating the desired nr of threads used by FFTW
+
+**Returns:** Py\_None
+
+Init will initialize the FFTW and, if compiled with it, the MPI. Only when using
+MPI you need to pass sys.argv, otherwise you could pass an empty list `[]`.
+It is, however, recommended to always pass `sys.argv`
+
+
+#### plan\_dft\_1d
+
+`minifftw.plan_dft_1d(input_array, output_array, direction, flags)`
+
+**Parameters:**
+
+- input\_array: Numpy-Array with dtype=numpy.complex128
+- output\_array: Numpy-Array with dtype=numpy.complex128
+- direction: Either `minifftw.FFTW_FORWARD` or `minifftw.FFTW_BACKWARD`
+
+
+**Returns:** minifftw-plancapsule (opaque data)
+
+#### execute
+
+`minifftw.execute(plan)`
+
+**Parameters:**
+
+- plan: minifftw-plancapsule as it is returned by `minifftw.plan_XXX(...)`
+
+**Returns:**  New reference to output\_array from `minifftw.plan_XXX(...)`
+
+
 ### Basics
 
 ``` Python3
