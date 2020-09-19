@@ -14,6 +14,9 @@ working on a cluster consisting of nodes with e.g. 40GB *available* RAM per node
 the largest array you'll be able to transform is 40GB large. Have a look at
 [mpi.md](./doc/mpi.md) for details.
 
+Also note that, just like the C-FFTW, this wrapper initializes and finalizes
+the Message Passing Interface automatically, without giving you direct control
+over it.
 
 ![minifftw callstack](doc/images/fftw-calls.png)
 
@@ -26,12 +29,20 @@ you build it.
 This project is work in progress and currently in beta state.
 It should be usable and free of errors.
 
+### Implemented FFTW functionality
+
+- fftw\_init\_threads
+- fftw\_init, with and without MPI
+- fftw\_plan\_dft\_1d
+- fftw cleanup routines
+
 
 ## List of supported Linux Clusters
 
-- Leibniz Rechenzentrum, CoolMUC-2
+- [Leibniz Rechenzentrum](./clusters/lrz/README.md), CoolMUC-2
 
 Please send a patch if you want to see your cluster supported.
+
 
 ## Requirements
 
@@ -42,20 +53,22 @@ On your system, you'll need the following components:
 - Numpy C-header files
 - MPI implementation (i.e. openMPI) with header files
 
-OpenMP (without 'I') is **not** required, as this wrapper uses the FFTW with POSIX threads.
+OpenMP (without 'I') is **not** required, as this wrapper uses the FFTW with
+POSIX threads.
 
 On a typical linux distro, the required packages might be called:
 
-- libfft3-mpi-dev
+- libfftw3-mpi-dev
 - python3-numpy
 - libopenmpi-dev
+
 
 ## Building
 
 ### Conventional Targets
 
 - `make normal` for a wrapper around the serial FFTW
-- `make mpi` for a wrapper around the MPI-FFTW, usable i.e. on clusters
+- `make mpi` for a wrapper around the MPI-FFTW
 
 ### Linux Clusters
 
@@ -103,34 +116,41 @@ it into a python-capsule, which later has to be passed to all following
 mfftw functions.
 
 Once you are done transforming everything you wanted, call the finit() function
-to terminate MPI properly.
+to terminate MPI properly. When building the MPI-version, finit() will terminate
+*all* your processes. So, make sure you saved everything before this call.
 
-> **Note**: You can and *should* call init() and finit() regardless wethetr you
+> **Note**: You can and *should* call init() and finit() regardless whether you
 use the MPI version or not. This way, you will never have to adjust your python
 code when using this wrapper, even when you'll run it on a cluster.
 
 ### Important Notes
 
 This wrapper applies a few tricks to make the usage of FFTW more easy for the
-end user. This results in a few points which should be kept in mind:
+end user. This results in a few points which should be kept in mind.
+
+Additionally, keep in mind that minifftw just wraps FFTW – so the behavior
+documented for the FFTW will also apply to this wrapper. For instance, the
+planner-functions will overwrite your input array with arbitrary data, so you
+should fill them with your payload once planing is completed.
 
 #### Plan Capsules
 
 `mfftw.plan_XXX` returns a python capsule (opaque data) which encapsulates
-the fftw data types, including the fftw_plan and a reference to your numpy arrays.
+the fftw data types, including the fftw\_plan and a reference to your numpy arrays.
 
 Note the following:
 
 - Once the plan is created, you must not reallocate your numpy-array, nor change
 its length. Violating this rule might result in undefined behavior.
-- A plan and the underlying memory gets freed once the plan gets out of scope
+- A plan and the underlying memory (except if there are other references to the
+numpy arrays) gets freed once the plan gets out of scope
 (rather: is garbage collected). You could enforce this with `del(my_plan)`.
 - The capsule contains a reference to your numpy-array. Therefore, the array can
 not be garbage collected until the plan-capsule gets dropped.
 
 #### Inplace Transforms and Overwriting
 
-If input_array and output_array are identical, the wrapper resp. the fftw will
+If input\_array and output\_array are identical, the wrapper resp. the fftw will
 perform an inplace transform, hence overwriting your original array.
 
 Additionally, FFTW offers you the opportunity to pass two different arrays, but
@@ -138,14 +158,6 @@ allow the library to overwrite your input-array anyways. This might help the
 FFTW gain performance. To enable this mode, pass `minifftw.FFTW_DESTROY_INPUT`
 as a flag in the plan creation functions.
 
-
-#### Executing
-
-Executing will overwrite your original numpy array.
-If you don't want this behavior, you have to pass a deep copy of your array to
-the plan-method. However, if you would want to execute the plan a second time,
-this would mean you'd have to copy the results of the transform into the
-deep-copied first array.
 
 ## TODO
 
