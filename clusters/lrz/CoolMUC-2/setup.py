@@ -43,6 +43,7 @@ else:
     main_module = module_normal
 
 setup(name = 'minifftw', version = '0.2',
+        license = 'GPLv3',
         description = 'minimalistic, uncomplete FFTW wrapper without MPI support.',
         ext_modules = [main_module],
         author='Philipp Stanner',
