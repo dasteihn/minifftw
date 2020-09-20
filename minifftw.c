@@ -134,6 +134,18 @@ import_wisdom_mpi(char *wisdom)
 
 
 static PyObject *
+import_system_wisdom(PyObject *self, PyObject *args)
+{
+	if (fftw_import_system_wisdom() == 0) {
+		PyErr_SetString(Mfftw_error, "Can not import system-wisdom.");
+		return NULL;
+	}
+
+	Py_RETURN_NONE;
+}
+
+
+static PyObject *
 import_wisdom(PyObject *self, PyObject *args)
 {
 	char *wisdom_path = NULL;
@@ -274,7 +286,7 @@ init(PyObject *self, PyObject *args)
 		threads_ok = fftw_init_threads();
 
 	if (!threads_ok) {
-		/* TODO: error handling */
+		PyErr_SetString(Mfftw_error, "Could not initialize threads.");
 		return NULL;
 	}
 
@@ -331,6 +343,8 @@ static PyMethodDef Minifftw_methods[] = {
 	{"execute", execute, METH_VARARGS, "execute a previously created plan"},
 	{"import_wisdom", import_wisdom, METH_VARARGS,
 		"import the FFTW wisdom from a filename/path"},
+	{"import_system_wisdom", import_system_wisdom, METH_VARARGS,
+		"import the FFTW system-wisdom"},
 	{"export_wisdom", export_wisdom, METH_VARARGS,
 		"export the FFTW wisdom to a filename/path"},
 	{NULL, NULL, 0, NULL},
