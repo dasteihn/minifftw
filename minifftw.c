@@ -112,23 +112,45 @@ get_rank(PyObject *self, PyObject *args)
 }
 
 
-static int
-import_wisdom_mpi(char *wisdom)
+static PyObject *
+import_wisdom_mpi(PyObject *self, PyObject *args)
 {    
-	int rank = 42;
+	char *wisdom_path = NULL;
+	if (PyArg_ParseTuple(args, "s", &wisdom_path) == 0)
+		return NULL;
+
+	int rank = -1;
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 	if (rank != 0)
-		return 0;
+		Py_RETURN_NONE;
 
 	/* Look if we have Wisdom. If we do, broadcast it! */
-	if (fftw_import_wisdom_from_filename(wisdom) != 0) {
+	if (fftw_import_wisdom_from_filename(wisdom_path) != 0) {
 		fftw_mpi_broadcast_wisdom(MPI_COMM_WORLD);
 	} else {
 		PyErr_SetString(Mfftw_error, "fftw-wisdom can not be imported.");
-		return -1;
+		return NULL;
 	}
 
-	return 0;
+	Py_RETURN_NONE;
+}
+
+#else
+
+static PyObject *
+import_wisdom(PyObject *self, PyObject *args)
+{
+	char *wisdom_path = NULL;
+	if (PyArg_ParseTuple(args, "s", &wisdom_path) == 0)
+		return NULL;
+
+	/* fftw uses 0 as error code */
+	if (fftw_import_wisdom_from_filename(wisdom_path) == 0) {
+		PyErr_SetString(Mfftw_error, "fftw-wisdom can not be imported.");
+		return NULL;
+	}
+
+	Py_RETURN_NONE;
 }
 #endif /* MFFTW_MPI */
 
@@ -145,47 +167,30 @@ import_system_wisdom(PyObject *self, PyObject *args)
 }
 
 
+#ifdef MFFTW_MPI
 static PyObject *
-import_wisdom(PyObject *self, PyObject *args)
+export_wisdom_mpi(PyObject *self, PyObject *args)
 {
+	int rank = -1, ret = 0;
 	char *wisdom_path = NULL;
 	if (PyArg_ParseTuple(args, "s", &wisdom_path) == 0)
 		return NULL;
 
-#ifdef MFFTW_MPI
-	if (import_wisdom_mpi(wisdom_path) != 0) {
-		PyErr_SetString(Mfftw_error,
-			"fftw-wisdom can not be imported over MPI.");
+	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+	if (rank != 0)
+		Py_RETURN_NONE;
+
+	fftw_mpi_gather_wisdom(MPI_COMM_WORLD);
+	ret = fftw_export_wisdom_to_filename(wisdom_path);
+	if (ret == 0) {
+		PyErr_SetString(Mfftw_error, "Could not store mpi-fftw-wisdom.");
 		return NULL;
 	}
-#else
-	/* fftw uses 0 as error code */
-	if (fftw_import_wisdom_from_filename(wisdom_path) == 0) {
-		PyErr_SetString(Mfftw_error, "fftw-wisdom can not be imported.");
-		return NULL;
-	}
-#endif /* MFFTW_MPI */
 
 	Py_RETURN_NONE;
 }
 
-
-#ifdef MFFTW_MPI
-static int
-export_wisdom_mpi(char *wisdom_path)
-{
-	int rank = -1, ret = 0;
-	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-	if (rank != 0)
-		return 0;
-
-	fftw_mpi_gather_wisdom(MPI_COMM_WORLD);
-	ret = fftw_export_wisdom_to_filename(wisdom_path);
-
-	return ret == 0 ? -1 : 0;
-}
-#endif /* MFFTW_MPI */
-
+#else
 
 static PyObject *
 export_wisdom(PyObject *self, PyObject *args)
@@ -194,21 +199,14 @@ export_wisdom(PyObject *self, PyObject *args)
 	if (PyArg_ParseTuple(args, "s", &wisdom_path) == 0)
 		return NULL;
 
-#ifdef MFFTW_MPI
-	if (export_wisdom_mpi(wisdom_path) != 0) {
-		PyErr_SetString(Mfftw_error,
-			"Could not export the wisdom gathered over MPI.");
-		return NULL;
-	}
-#else
 	if (fftw_export_wisdom_to_filename(wisdom_path) == 0) {
 		PyErr_SetString(Mfftw_error, "fftw-wisdom can not be exported.");
 		return NULL;
 	}
-#endif /* MFFTW_MPI */
 
 	Py_RETURN_NONE;
 }
+#endif /* MFFTW_MPI */
 
 
 static PyObject *
@@ -335,18 +333,22 @@ static PyMethodDef Minifftw_methods[] = {
 #ifdef MFFTW_MPI
 	{"init", init, METH_VARARGS, "prepare FFTW and MPI"},
 	{"get_rank", get_rank, METH_VARARGS, "get the MPI rank"},
+	{"import_wisdom", import_wisdom_mpi, METH_VARARGS,
+		"import wisdom and broadcast it over MPI"},
+	{"export_wisdom", export_wisdom_mpi, METH_VARARGS,
+		"gather wisdom over MPI and export it"},
 #else
 	{"init", init, METH_VARARGS, "prepare FFTW"},
+	{"import_wisdom", import_wisdom, METH_VARARGS,
+		"import the FFTW wisdom from a filename/path"},
+	{"export_wisdom", export_wisdom, METH_VARARGS,
+		"export the FFTW wisdom to a filename/path"},
 #endif /* MFFTW_MPI */
 	{"finit", finit, METH_VARARGS, "finalize everything"},
 	{"plan_dft_1d", plan_dft_1d, METH_VARARGS, "one dimensional FFTW"},
 	{"execute", execute, METH_VARARGS, "execute a previously created plan"},
-	{"import_wisdom", import_wisdom, METH_VARARGS,
-		"import the FFTW wisdom from a filename/path"},
 	{"import_system_wisdom", import_system_wisdom, METH_VARARGS,
 		"import the FFTW system-wisdom"},
-	{"export_wisdom", export_wisdom, METH_VARARGS,
-		"export the FFTW wisdom to a filename/path"},
 	{NULL, NULL, 0, NULL},
 };
 
