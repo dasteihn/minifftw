@@ -102,7 +102,17 @@ plan_dft_1d(PyObject *self, PyObject *args)
 
 
 #ifdef MFFTW_MPI
-int
+static PyObject *
+get_rank(PyObject *self, PyObject *args)
+{
+	int rank = -1;
+	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+	return Py_BuildValue("i", rank);
+}
+
+
+static int
 import_wisdom_mpi(char *wisdom)
 {    
 	int rank = 42;
@@ -149,15 +159,15 @@ import_wisdom(PyObject *self, PyObject *args)
 
 
 #ifdef MFFTW_MPI
-int
+static int
 export_wisdom_mpi(char *wisdom_path)
 {
 	int rank = -1, ret = 0;
-	fftw_mpi_gather_wisdom(MPI_COMM_WORLD);
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 	if (rank != 0)
 		return 0;
 
+	fftw_mpi_gather_wisdom(MPI_COMM_WORLD);
 	ret = fftw_export_wisdom_to_filename(wisdom_path);
 
 	return ret == 0 ? -1 : 0;
@@ -165,7 +175,7 @@ export_wisdom_mpi(char *wisdom_path)
 #endif /* MFFTW_MPI */
 
 
-PyObject *
+static PyObject *
 export_wisdom(PyObject *self, PyObject *args)
 {
 	char *wisdom_path = NULL;
@@ -312,6 +322,7 @@ finit(PyObject *self, PyObject *args)
 static PyMethodDef Minifftw_methods[] = {
 #ifdef MFFTW_MPI
 	{"init", init, METH_VARARGS, "prepare FFTW and MPI"},
+	{"get_rank", get_rank, METH_VARARGS, "get the MPI rank"},
 #else
 	{"init", init, METH_VARARGS, "prepare FFTW"},
 #endif /* MFFTW_MPI */
