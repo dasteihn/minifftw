@@ -103,7 +103,7 @@ plan_dft_1d(PyObject *self, PyObject *args)
 
 #ifdef MFFTW_MPI
 static PyObject *
-get_rank(PyObject *self, PyObject *args)
+get_mpi_rank(PyObject *self, PyObject *args)
 {
 	int rank = -1;
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -332,7 +332,7 @@ finit(PyObject *self, PyObject *args)
 static PyMethodDef Minifftw_methods[] = {
 #ifdef MFFTW_MPI
 	{"init", init, METH_VARARGS, "prepare FFTW and MPI"},
-	{"get_rank", get_rank, METH_VARARGS, "get the MPI rank"},
+	{"get_mpi_rank", get_mpi_rank, METH_VARARGS, "get the MPI rank"},
 	{"import_wisdom", import_wisdom_mpi, METH_VARARGS,
 		"import wisdom and broadcast it over MPI"},
 	{"export_wisdom", export_wisdom_mpi, METH_VARARGS,
