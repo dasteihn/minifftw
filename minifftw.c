@@ -158,6 +158,13 @@ import_wisdom(PyObject *self, PyObject *args)
 static PyObject *
 import_system_wisdom(PyObject *self, PyObject *args)
 {
+#ifdef MFFTW_MPI
+	int rank = -1;
+	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+	if (rank != 0)
+		Py_RETURN_NONE;
+#endif /* MFFTW_MPI */
+
 	if (fftw_import_system_wisdom() == 0) {
 		PyErr_SetString(Mfftw_error, "Can not import system-wisdom.");
 		return NULL;
