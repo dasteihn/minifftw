@@ -27,11 +27,17 @@ you build it.
 ## Project Status
 
 This project is work in progress and currently in beta state.
-It should be usable and free of errors.
+It should be usable and free of errors according the serial FFTW.
+
+The MPI-FFTW works as well, but there are some stumbling blocks according MPI
+finalization which are currently under testing. Feel free to help ;)
 
 ### Implemented FFTW functionality
 
 - fftw\_init\_threads
+- Wisdom import from filename
+- Wisdom export to filename
+- System-Wisdom import
 - fftw\_init, with and without MPI
 - fftw\_plan\_dft\_1d
 - fftw cleanup routines
@@ -91,12 +97,12 @@ To build, run from the main folder:
 
 `minifftw.init(sys.argv, nr_of_threads`
 
-**Parameters:**
+*Parameters:*
 
 - sys.argv: List of strings
 - nr\_of\_threads: Integer indicating the desired nr of threads used by FFTW
 
-**Returns:** Py\_None
+*Returns:* Py\_None
 
 Init will initialize the FFTW and, if compiled with it, the MPI. Only when using
 MPI you need to pass sys.argv, otherwise you could pass an empty list `[]`.
@@ -107,24 +113,24 @@ It is, however, recommended to always pass `sys.argv`
 
 `minifftw.plan_dft_1d(input_array, output_array, direction, flags)`
 
-**Parameters:**
+*Parameters:*
 
 - input\_array: Numpy-Array with dtype=numpy.complex128
 - output\_array: Numpy-Array with dtype=numpy.complex128
 - direction: Either `minifftw.FFTW_FORWARD` or `minifftw.FFTW_BACKWARD`
 
 
-**Returns:** minifftw-plancapsule (opaque data)
+*Returns:* minifftw-plancapsule (opaque data)
 
 #### execute
 
 `minifftw.execute(plan)`
 
-**Parameters:**
+*Parameters:*
 
 - plan: minifftw-plancapsule as it is returned by `minifftw.plan_XXX(...)`
 
-**Returns:**  New reference to output\_array from `minifftw.plan_XXX(...)`
+*Returns:*  New reference to output\_array from `minifftw.plan_XXX(...)`
 
 
 ### Basics
@@ -132,18 +138,31 @@ It is, however, recommended to always pass `sys.argv`
 ``` Python3
 import sys
 import numpy as np
-import minifftw as mfftw
+import minifftw as m
 
 nr_of_threads = 8
 data_len = 2048
 
 mfftw.init(sys.argv, nr_of_threads)
+
+try:
+	m.import_wisdom("my_wisdom_file")
+	print("imported wisdom")
+except:
+	print("could not import wisdom")
+
 data_in = np.random.random(data_len) + np.random.random(data_len) * 1j
 data_out = np.zeros(data_len, dtype="complex128")
 p = m.plan_dft_1d(data_in, data_out, m.FFTW_FORWARD, m.FFTW_ESTIMATE)
 
 # the assignment is optional. mfftw.execute will fill data_out automatically
 result = mfftw.execute(plan)
+
+try:
+	m.export_wisdom("my_wisdom_file")
+	print("exported wisdom")
+except:
+	print("could not export wisdom")
 
 # ...
 mfftw.finit()
@@ -164,6 +183,10 @@ to terminate MPI properly. When building the MPI-version, finit() will terminate
 > **Note**: You can and *should* call init() and finit() regardless whether you
 use the MPI version or not. This way, you will never have to adjust your python
 code when using this wrapper, even when you'll run it on a cluster.
+
+### MPI Usage
+
+TODO
 
 ### Important Notes
 
@@ -204,7 +227,6 @@ as a flag in the plan creation functions.
 ## TODO
 
 - Think about exposing more of the API to the user, especially more transforms
-- Wisdom: Implement the FFTW's wisdom functionality
 - Distributed Memory: This version does not yet support the functionality for
 real distributed memory. This means that the FFTW's `alloc_local` functions are
 not yet available. Implementing this will be especially useful when the
@@ -212,7 +234,7 @@ multidimensional transforms get implemented.
 
 ## License
 
- (C) 2020, Philipp Stanner, `<stanner@posteo.de>`
+ Copyright 2020, Philipp Stanner, `<stanner@posteo.de>`
 
  This program is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
