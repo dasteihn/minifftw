@@ -234,7 +234,6 @@ static bool
 initialize_threaded_mpi(PyObject *argv_list)
 {
 	int passed_argc = 0, provided = 0;
-	printf("argc: %i\n", passed_argc);
 
 	/*
 	 * passed_argc is correct as-is, because this function received the
@@ -246,7 +245,6 @@ initialize_threaded_mpi(PyObject *argv_list)
 				"Length of argv list wrong for MPI usage.");
 		return false;
 	}
-	printf("argc: %i\n", passed_argc);
 	Argv = check_get_str_array(argv_list, passed_argc);
 	if (!Argv)
 		return false;
@@ -308,18 +306,13 @@ finit(PyObject *self, PyObject *args)
 	free(Argv);
 	Argv = NULL;
 #ifdef MFFTW_MPI
+	int rank = -1;
 	fftw_mpi_cleanup();
-	MPI_Finalize();
 /*
- * Currently, there exists an awkward race-condition like problem with
- * finalizing MPI. The problem seems to disappear when you terminate the whole
- * python interpreter from the python-extension.
- * The problem seems only to exist when using MPI-fftw in python, whereas a plain
- * C-application runs just fine. This might mean that the python interpreter
- * process might play some role in the phenomenon.
- *
- * TODO: Find out if there is a better solution.
+ * Terminate all MPI-processes.
+ * TODO: Verify if this is appropriate.
  */
+	MPI_Finalize();
 	exit(EXIT_SUCCESS);
 #else
 	fftw_cleanup();	
