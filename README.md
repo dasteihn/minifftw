@@ -21,7 +21,9 @@ over it.
 ![minifftw callstack](doc/images/fftw-calls.png)
 
 Minifftw is a wrapper either around the fftw3, or fftw3-mpi, depending on how
-you build it.
+you build it. It uses the FFTW in threaded mode, therefore resulting in hybrid
+mode when using MPI. Of course, you could set the number of threads to one and
+emulate the behavior of a pure MPI-FFTW.
 
 
 ## Project Status
@@ -38,7 +40,7 @@ finalization which are currently under testing. Feel free to help ;)
 - Wisdom import from filename
 - Wisdom export to filename
 - System-Wisdom import
-- fftw\_init, with and without MPI
+- fftw\_init, with or without MPI
 - fftw\_plan\_dft\_1d
 - fftw cleanup routines
 
@@ -122,6 +124,7 @@ It is, however, recommended to always pass `sys.argv`
 
 *Returns:* minifftw-plancapsule (opaque data)
 
+
 #### execute
 
 `minifftw.execute(plan)`
@@ -132,6 +135,30 @@ It is, however, recommended to always pass `sys.argv`
 
 *Returns:*  New reference to output\_array from `minifftw.plan_XXX(...)`
 
+
+#### get\_mpi\_rank
+
+`minifftw.get_mpi_rank()`
+
+*Parameters*: None
+
+*Returns*: The MPI-Rank (integer) of your application
+
+Only available in MPI mode.
+
+#### finit
+
+`minifftw.finit()`
+
+*Parameters*: None
+
+*Returns*: None
+
+Deallocates all resources used by FFTW and the wrapper. If built with the MPI
+version, this function will **terminate all** your applications. This is done
+due to some inconveniences described in [MPI](./doc/mpi.md).
+So, make sure your simulation has stored its results and closed all file
+descriptors prior to calling this function.
 
 ### Basics
 
