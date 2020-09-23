@@ -113,12 +113,12 @@ It is, however, recommended to always pass `sys.argv`
 
 #### plan\_dft\_1d
 
-`minifftw.plan_dft_1d(input_array, output_array, direction, flags)`
+`plan = minifftw.plan_dft_1d(input_array, output_array, direction, flags)`
 
 *Parameters:*
 
-- input\_array: Numpy-Array with dtype=numpy.complex128
-- output\_array: Numpy-Array with dtype=numpy.complex128
+- input\_array: One dimensional Numpy-Array with dtype=numpy.complex128
+- output\_array: One dimensional Numpy-Array with dtype=numpy.complex128
 - direction: Either `minifftw.FFTW_FORWARD` or `minifftw.FFTW_BACKWARD`
 - flags: FFTW flags
 
@@ -136,7 +136,7 @@ Available flags are:
 
 #### execute
 
-`minifftw.execute(plan)`
+`result = minifftw.execute(plan)`
 
 *Parameters:*
 
@@ -147,7 +147,7 @@ Available flags are:
 
 #### get\_mpi\_rank
 
-`minifftw.get_mpi_rank()`
+`rank = minifftw.get_mpi_rank()`
 
 *Parameters*: None
 
@@ -179,7 +179,7 @@ import minifftw as m
 nr_of_threads = 8
 data_len = 2048
 
-mfftw.init(sys.argv, nr_of_threads)
+m.init(sys.argv, nr_of_threads)
 
 try:
 	m.import_wisdom("my_wisdom_file")
@@ -204,7 +204,7 @@ except:
 mfftw.finit()
 ```
 
-The first call (mfftw.init) is very important when using MPI: It will take your
+The first call (m.init()) is very important when using MPI: It will take your
 environment and pass it to the MPI\_Init() function. Also, this function will
 configure the number of threads the FFTW uses to heat up your machine.
 
