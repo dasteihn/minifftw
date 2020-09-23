@@ -133,6 +133,10 @@ Available flags are:
 
 *Returns:* minifftw-plancapsule (opaque data)
 
+Note that the underlying FFTW function uses `int` to indicate the array's size,
+therefore, on most platforms, you'll be limited to a maximum array size of
+`2^31 - 1` (roughly two billion) complex numbers.
+
 
 #### execute
 
