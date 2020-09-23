@@ -120,7 +120,16 @@ It is, however, recommended to always pass `sys.argv`
 - input\_array: Numpy-Array with dtype=numpy.complex128
 - output\_array: Numpy-Array with dtype=numpy.complex128
 - direction: Either `minifftw.FFTW_FORWARD` or `minifftw.FFTW_BACKWARD`
+- flags: FFTW flags
 
+Available flags are:
+
+- FFTW\_ESTIMATE
+- FFTW\_MEASURE
+- FFTW\_PATIENT
+- FFTW\_EXHAUSTIVE
+- FFTW\_WISDOM\_ONLY
+- FFTW\_DESTROY\_INPUT
 
 *Returns:* minifftw-plancapsule (opaque data)
 
