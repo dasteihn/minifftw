@@ -251,6 +251,15 @@ with open("result_file_mpi_rank_" + str(rank), "w") as f:
 	f.write(result)
 ```
 
+Keeping this in mind, tasks can be started as usual either with
+
+```
+mpiexec -np <N> python3 my_minifftw_simulation.py
+```
+
+or with a cluster manager (i.g. slurm) of your choice.
+
+
 #### Performance
 
 It is rather tricky to get the MPI-FFTW to run performantly. Have a look into
