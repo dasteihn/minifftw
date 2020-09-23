@@ -97,7 +97,7 @@ To build, run from the main folder:
 
 #### init
 
-`minifftw.init(sys.argv, nr_of_threads`
+`minifftw.init(sys.argv, nr_of_threads)`
 
 *Parameters:*
 
@@ -220,9 +220,42 @@ to terminate MPI properly. When building the MPI-version, finit() will terminate
 use the MPI version or not. This way, you will never have to adjust your python
 code when using this wrapper, even when you'll run it on a cluster.
 
+
 ### MPI Usage
 
-TODO
+Once the MPI wrapper is build for your target, there are only a few things to
+keep in mind, which mostly do have to do with MPI itself, not the wrapper.
+
+#### No Problems
+
+All functions in this wrapper take MPI into account when being called by your
+python code.
+
+For example, `import_wisdom` will check if the calling process has
+MPI rank 0. If it does, it will import the wisdom and broadcast it to your other
+processes.
+
+#### Files
+
+The most important thing to keep in mind is that writing your simulation's
+results to a file will result in undefined results if you do not pay attention
+to the MPI-ranks.
+
+One way to solve this is to make every process write into its own file:
+
+```py
+result = mfftw.execute(my_plan)
+
+rank = mfftw.get_mpi_rank()
+with open("result_file_mpi_rank_" + str(rank), "w") as f:
+	f.write(result)
+```
+
+#### Performance
+
+It is rather tricky to get the MPI-FFTW to run performantly. Have a look into
+[mpi-performance](doc/mpi_performance.md) to get some tips about that.
+
 
 ### Important Notes
 
