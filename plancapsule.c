@@ -31,15 +31,6 @@
  * ====================== Capsule creation and destruction ===================
  */
 
-static void
-mfftw_cleanup_plan(struct mfftw_plan *plan)
-{
-	fftw_destroy_plan(plan->plan);
-	Py_DECREF(plan->in_arr);
-	Py_DECREF(plan->out_arr);
-	free(plan);
-}
-
 
 static void
 mfftw_destroy_capsule(PyObject *capsule)
@@ -47,7 +38,10 @@ mfftw_destroy_capsule(PyObject *capsule)
 	struct mfftw_plan *plan = 
 		(struct mfftw_plan *)PyCapsule_GetPointer(capsule, NULL);
 
-	mfftw_cleanup_plan(plan);
+	fftw_destroy_plan(plan->plan);
+	Py_DECREF(plan->in_arr);
+	Py_DECREF(plan->out_arr);
+	free(plan);
 }
 
 
@@ -114,7 +108,6 @@ mfftw_unwrap_capsule(PyObject *mplan)
 		PyErr_SetString(PyExc_TypeError, "Expected a capsule.");
 		return NULL;
 	}
-	struct mfftw_plan *plan =
-		(struct mfftw_plan *)PyCapsule_GetPointer(mplan, NULL);
-	return plan;
+
+	return (struct mfftw_plan *)PyCapsule_GetPointer(mplan, NULL);
 }

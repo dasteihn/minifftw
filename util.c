@@ -26,6 +26,15 @@
 #include "minifftw.h"
 #include <stdbool.h>
 
+/*
+ * ========================= Environment ======================================
+ *
+ * The following functions serve the purpose the get the argv environment of the
+ * program and parse it into a form evaluable by C.
+ * This is done, because MPI requires the original environment as it is passed
+ * by mpiexec.
+ */
+
 static char *
 get_str_from_object(PyObject *o)
 {
@@ -113,6 +122,7 @@ check_array_and_get_length(PyArrayObject *arr)
 
 
 /* ============================== Debugging ================================= */
+
 void
 print_complex_nr(fftw_complex nr)
 {
@@ -122,7 +132,7 @@ print_complex_nr(fftw_complex nr)
 void
 debug_array_print(struct mfftw_plan *mplan)
 {
-	size_t i;
+	ssize_t i;
 	fftw_complex *arr_in = reinterpret_numpy_to_fftw_arr(mplan->in_arr);
 	fftw_complex *arr_out = reinterpret_numpy_to_fftw_arr(mplan->out_arr);
 

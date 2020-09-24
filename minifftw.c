@@ -313,7 +313,6 @@ finit(PyObject *self, PyObject *args)
 	free(Argv);
 	Argv = NULL;
 #ifdef MFFTW_MPI
-	int rank = -1;
 	fftw_mpi_cleanup();
 /*
  * Terminate all MPI-processes.
