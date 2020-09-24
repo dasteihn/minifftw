@@ -27,7 +27,12 @@ This repo's setup-scripts are not very good at detecting changes.
 You will need a virtual python environment which contains some central utils
 like distutils, numpy and so on.
 
-TODO
+```
+$ module load python
+$ conda create -n py38 python=3.8
+$ source activate py38
+(py38) $ conda install numpy
+```
 
 ### CoolMUC-2
 
