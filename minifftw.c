@@ -38,7 +38,7 @@ static long long
 prepare_arrays(PyObject *tmp1, PyObject *tmp2,
 		PyArrayObject **arr1, PyArrayObject **arr2)
 {
-	long long array_len1 = 0, array_len2 = 0;
+	long long array_len1 = -1, array_len2 = -1;
 	*arr1 = (PyArrayObject *)PyArray_FROM_OTF(tmp1, NPY_COMPLEX128,
 			NPY_ARRAY_IN_ARRAY);
 	*arr2 = (PyArrayObject *)PyArray_FROM_OTF(tmp2, NPY_COMPLEX128,
