@@ -41,6 +41,13 @@ mfftw_destroy_capsule(PyObject *capsule)
 	fftw_destroy_plan(plan->plan);
 	Py_DECREF(plan->in_arr);
 	Py_DECREF(plan->out_arr);
+
+	/* Only process 0 has allocated something here. */
+	if (plan->info->rank == 0)
+		free(plan->info->procmap.infos);
+
+	free(plan->info->local_slice);
+	free(plan->info);
 	free(plan);
 }
 
@@ -59,7 +66,8 @@ mfftw_create_capsule(struct mfftw_plan *mplan)
  */
 static struct mfftw_plan *
 mfftw_create_capsule_struct(fftw_plan plan,
-		PyArrayObject *in_arr, PyArrayObject *out_arr)
+		PyArrayObject *in_arr, PyArrayObject *out_arr,
+		struct mfftw_mpi_info *info)
 {
 	struct mfftw_plan *capsule = calloc(1, sizeof(struct mfftw_plan));
 	if (!capsule) {
@@ -75,6 +83,7 @@ mfftw_create_capsule_struct(fftw_plan plan,
 	capsule->in_arr = in_arr;
 	capsule->out_arr = out_arr;
 	capsule->plan = plan;
+	capsule->info = info;
 
 	return capsule;
 }
@@ -85,15 +94,16 @@ mfftw_create_capsule_struct(fftw_plan plan,
  * interact with the FFTW.
  */
 PyObject *
-mfftw_encapsulate_plan(fftw_plan plan, PyArrayObject *in_arr, PyArrayObject *out_arr)
+mfftw_encapsulate_plan(fftw_plan plan,
+		PyArrayObject *in_arr, PyArrayObject *out_arr,
+		struct mfftw_mpi_info *info)
 {
 	struct mfftw_plan *mplan = NULL;
-	mplan = mfftw_create_capsule_struct(plan, in_arr, out_arr);
+	mplan = mfftw_create_capsule_struct(plan, in_arr, out_arr, info);
 	if (!mplan)
 		return PyErr_NoMemory();
 
 	return mfftw_create_capsule(mplan);
-
 }
 
 

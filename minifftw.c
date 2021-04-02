@@ -56,10 +56,177 @@ prepare_arrays(PyObject *tmp1, PyObject *tmp2,
 	return array_len1;
 }
 
+#ifdef MFFTW_MPI
+
+static struct mfftw_mpi_info *
+prepare_mfftw_mpi_info(long long array_len, int direction, int flags)
+{
+	int rank, nr_of_procs;
+	struct mfftw_mpi_info *info;
+
+	info = calloc(1, sizeof(struct mfftw_mpi_info));
+	if (!info)
+		return NULL;
+
+	info->arrmeta.local = fftw_mpi_local_size_1d(array_len, MPI_COMM_WORLD,
+                direction, flags, &info->arrmeta.local_ni,
+		&info->arrmeta.local_i_start, &info->arrmeta.local_no,
+		&info->arrmeta.local_o_start);
+
+	info->local_slice = fftw_alloc_complex(info->arrmeta.local);
+	if (!info->local_slice)
+		goto err_out;
+
+	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+	info->rank = rank;
+
+	MPI_Comm_size(MPI_COMM_WORLD, &nr_of_procs);
+	info->procmap.nr_of_procs = nr_of_procs;
+
+	return info;
+
+err_out:
+	free(info);
+	return NULL;
+}
+
+
+static int
+receive_subinfo(struct array_meta *meta, int rank)
+{
+	int ret;
+	MPI_Status stat;
+	unsigned long long arrmeta[5] = {0};
+
+	ret = MPI_Recv(arrmeta, 5, MPI_UNSIGNED_LONG_LONG, rank, 0,
+			MPI_COMM_WORLD, &stat);
+
+	meta->local = arrmeta[0];
+	meta->local_ni = arrmeta[1];
+	meta->local_i_start = arrmeta[2];
+	meta->local_no = arrmeta[3];
+	meta->local_o_start = arrmeta[4];
+
+	return ret;
+}
+
+
+static int
+collect_mfftw_mpi_infos(struct mfftw_mpi_info *info)
+{
+	int rank, ret;
+	struct mfftw_mpi_info *tmp;
+
+	tmp = calloc(info->procmap.nr_of_procs, sizeof(struct mfftw_mpi_info));
+	if (!tmp)
+		return -1;
+
+	/* This is us, process 0 */
+	memcpy(&tmp[0], info, sizeof(struct mfftw_mpi_info));
+
+	// TODO iterationsgrenze?
+	for (rank = 1; rank < info->procmap.nr_of_procs; rank++) {
+		ret = receive_subinfo(&tmp[rank].arrmeta, rank);
+		if (ret != 0)
+			break;
+	}
+
+	info->procmap.infos = tmp;
+
+	return ret;
+}
+
+
+static int
+send_mfftw_mpi_info(struct array_meta *meta)
+{
+	/* MPI can't send ptrdiffs, so we hack... */
+	unsigned long long arrmeta[5];
+
+	arrmeta[0] = meta->local;
+	arrmeta[1] = meta->local_ni;
+	arrmeta[2] = meta->local_i_start;
+	arrmeta[3] = meta->local_no;
+	arrmeta[4] = meta->local_o_start;
+
+	return MPI_Send(arrmeta, 5, MPI_UNSIGNED_LONG_LONG, 0, 0, MPI_COMM_WORLD);
+}
+
+
+/* 
+ * Inform the meisterprocess about who has which slice of the array.
+ * ._.
+ */
+static int
+synchronize_process_map(struct mfftw_mpi_info *info)
+{
+	if (info->rank == 0)
+		collect_mfftw_mpi_infos(info);
+	else
+		send_mfftw_mpi_info(&info->arrmeta);
+}
+
+
+/*
+ * This function will do several things:
+ * 1. Create the MPI FFTW plans
+ * 2. Allocate the local slice the FFTW wants.
+ * 3. Inform the meisterprocess about who has which slice of the whole array.
+ * 4. Confuse programmers
+ */
+static PyObject *
+plan_dft_1d_mpi(PyObject *self, PyObject *args)
+{
+	struct mfftw_mpi_info *info = NULL;
+	PyObject *tmp1 = NULL, *tmp2 = NULL;
+	fftw_plan plan;
+	PyArrayObject *py_in_arr = NULL, *py_out_arr = NULL;
+	fftw_complex *mfftw_in_arr = NULL, *mfftw_out_arr = NULL;
+	long long array_len = 0;
+	int success = 0, direction, flags;
+
+	success = PyArg_ParseTuple(args, "O!O!ii", &PyArray_Type, &tmp1,
+		&PyArray_Type, &tmp2, &direction, &flags);
+	if (success == 0)
+		return NULL;
+
+	array_len = prepare_arrays(tmp1, tmp2, &py_in_arr, &py_out_arr);
+	if (array_len < 0) {
+		PyErr_SetString(Mfftw_error, "Could not prepare arrays.");
+		return NULL;
+	}
+
+	info = prepare_mfftw_mpi_info(array_len, direction, flags);
+	if (!info) {
+		PyErr_SetString(Mfftw_error, "Could not prepare local info.");
+		return NULL;
+	}
+
+	// TODO check error
+	synchronize_process_map(info);
+
+	/*
+	 * COMM_WORLD means: All existing MPI-tasks will participate in calculating.
+	 */
+	// TODO replace with local info
+	plan = fftw_mpi_plan_dft_1d(array_len, mfftw_in_arr, mfftw_out_arr,
+		MPI_COMM_WORLD, direction, flags);
+
+	if (!plan) {
+		PyErr_SetString(Mfftw_error, "Could not create plan.");
+		free(info);
+		return NULL;
+	}
+
+	return mfftw_encapsulate_plan(plan, py_in_arr, py_out_arr, info);
+}
+
+#endif /* MFFTW_MPI */
 
 static PyObject *
 plan_dft_1d(PyObject *self, PyObject *args)
 {
+	struct mfftw_mpi_info *info = NULL;
 	PyObject *tmp1 = NULL, *tmp2 = NULL;
 	fftw_plan plan;
 	PyArrayObject *py_in_arr = NULL, *py_out_arr = NULL;
@@ -81,27 +248,21 @@ plan_dft_1d(PyObject *self, PyObject *args)
 	mfftw_in_arr = reinterpret_numpy_to_fftw_arr(py_in_arr);
 	mfftw_out_arr = reinterpret_numpy_to_fftw_arr(py_out_arr);
 
-#ifdef MFFTW_MPI
-	/*
-	 * COMM_WORLD means: All existing MPI-tasks will participate in calculating.
-	 */
-	plan = fftw_mpi_plan_dft_1d(array_len, mfftw_in_arr, mfftw_out_arr,
-		MPI_COMM_WORLD, direction, flags);
-#else
 	plan = fftw_plan_dft_1d(array_len, mfftw_in_arr, mfftw_out_arr,
 		direction, flags);
-#endif
 
 	if (!plan) {
 		PyErr_SetString(Mfftw_error, "Could not create plan.");
 		return NULL;
 	}
 
-	return mfftw_encapsulate_plan(plan, py_in_arr, py_out_arr);
+	/* info is passed empty and is not used without MPI. */
+	return mfftw_encapsulate_plan(plan, py_in_arr, py_out_arr, info);
 }
 
 
 #ifdef MFFTW_MPI
+
 static PyObject *
 get_mpi_rank(PyObject *self, PyObject *args)
 {
@@ -213,6 +374,104 @@ export_wisdom(PyObject *self, PyObject *args)
 
 	Py_RETURN_NONE;
 }
+
+#endif /* MFFTW_MPI */
+
+#ifdef MFFTW_MPI
+
+static int
+transmit_payload(int rank, fftw_complex *arr, size_t size)
+{
+	return MPI_Send(arr, size, MPI_C_DOUBLE_COMPLEX, rank,
+			0, MPI_COMM_WORLD);
+}
+
+
+static int
+receive_payload(int rank, fftw_complex *arr, size_t size)
+{
+	MPI_Status stat;
+
+	return MPI_Recv(arr, size, MPI_C_DOUBLE_COMPLEX, rank,
+			0, MPI_COMM_WORLD, &stat);
+}
+
+
+/* Leibeigener to Lehnsherr */
+static int
+distribute_one_payload(struct mfftw_plan *plan)
+{
+	return MPI_Send(plan->info->local_slice, plan->info->arrmeta.local_ni,
+			MPI_C_DOUBLE_COMPLEX, 0, 0, MPI_COMM_WORLD);
+}
+
+
+/* only useful for meisterprocess */
+static int
+distribute_all_payloads(struct mfftw_plan *plan)
+{
+	int i, ret = 0;
+	struct mfftw_mpi_info *tmp_info;
+	// TODO: Do something smarter
+	size_t tmp_i_start, tmp_ni;
+	fftw_complex *in_arr;
+
+	/* Use process 0 local size as qualifier for the tmp buff size. */
+	in_arr = reinterpret_numpy_to_fftw_arr(plan->in_arr);
+
+	for (i = 1; i < plan->info->procmap.nr_of_procs; i++) {
+		tmp_info = &plan->info[i];
+		tmp_i_start = tmp_info->arrmeta.local_i_start;
+		tmp_ni = tmp_info->arrmeta.local_ni;
+
+		ret = transmit_payload(i, &in_arr[tmp_i_start], tmp_ni);
+		if (ret != 0)
+			break;
+	}
+
+	return ret;
+}
+
+
+/* Untertanen receive one slice from meister. */
+static int
+collect_one_payload(struct mfftw_plan *plan)
+{
+	int ret;
+	MPI_Status stat;
+
+	ret = MPI_Recv(plan->info->local_slice, plan->info->arrmeta.local_ni,
+			MPI_C_DOUBLE_COMPLEX, 0, 0, MPI_COMM_WORLD, &stat);
+
+	return ret;
+}
+
+
+static int
+collect_all_payloads(struct mfftw_plan *plan)
+{
+	int i, ret = 0;
+	struct mfftw_mpi_info *tmp_info;
+	// TODO: Do something smarter
+	size_t tmp_i_start, tmp_ni;
+	fftw_complex *in_arr;
+
+	/* Use process 0 local size as qualifier for the tmp buff size. */
+	in_arr = reinterpret_numpy_to_fftw_arr(plan->in_arr);
+
+	for (i = 1; i < plan->info->procmap.nr_of_procs; i++) {
+		tmp_info = &plan->info[i];
+		tmp_i_start = tmp_info->arrmeta.local_i_start;
+		tmp_ni = tmp_info->arrmeta.local_ni;
+
+		ret = receive_payload(i, &in_arr[tmp_i_start], tmp_ni);
+		if (ret != 0)
+			break;
+	}
+
+	return ret;
+}
+
 #endif /* MFFTW_MPI */
 
 
@@ -229,7 +488,21 @@ execute(PyObject *self, PyObject *args)
 	if (!mplan)
 		return NULL;
 
+#ifdef MFFTW_MPI
+	if (mplan->info->rank == 0)
+		distribute_all_payloads(mplan);
+	else
+		collect_one_payload(mplan);
+#endif
+
 	fftw_execute(mplan->plan);
+
+#ifdef MFFTW_MPI
+	if (mplan->info->rank == 0)
+		collect_all_payloads(mplan);
+	else
+		distribute_one_payload(mplan);
+#endif
 
 	Py_INCREF(mplan->out_arr);
 	return (PyObject *)(mplan->out_arr);
@@ -336,15 +609,16 @@ static PyMethodDef Minifftw_methods[] = {
 		"import wisdom and broadcast it over MPI"},
 	{"export_wisdom", export_wisdom_mpi, METH_VARARGS,
 		"gather wisdom over MPI and export it"},
+	{"plan_dft_1d", plan_dft_1d_mpi, METH_VARARGS, "one dimensional FFTW"},
 #else
 	{"init", init, METH_VARARGS, "prepare FFTW"},
 	{"import_wisdom", import_wisdom, METH_VARARGS,
 		"import the FFTW wisdom from a filename/path"},
 	{"export_wisdom", export_wisdom, METH_VARARGS,
 		"export the FFTW wisdom to a filename/path"},
+	{"plan_dft_1d", plan_dft_1d, METH_VARARGS, "one dimensional FFTW"},
 #endif /* MFFTW_MPI */
 	{"finit", finit, METH_VARARGS, "finalize everything"},
-	{"plan_dft_1d", plan_dft_1d, METH_VARARGS, "one dimensional FFTW"},
 	{"execute", execute, METH_VARARGS, "execute a previously created plan"},
 	{"import_system_wisdom", import_system_wisdom, METH_VARARGS,
 		"import the FFTW system-wisdom"},

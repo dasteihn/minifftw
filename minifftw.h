@@ -1,5 +1,5 @@
 /*
- *  Copyright 2020, Philipp Stanner, <stanner@posteo.de>
+ *  Copyright 2020, 2021 Philipp Stanner, <stanner@posteo.de>
  *
  * This file is part of Minifftw.
  * Minifftw is free software: you can redistribute it and/or modify
@@ -16,8 +16,8 @@
  * along with Minifftw. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __minifftw_
-#define __minifftw_
+#ifndef MINIFFTW
+#define MINIFFTW
 
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
@@ -42,7 +42,38 @@
 #define MFFTW_REAL 0
 #define MFFTW_IMAG 1
 
-PyObject* mfftw_encapsulate_plan(fftw_plan, PyArrayObject*, PyArrayObject*);
+struct array_meta {
+	ptrdiff_t local;
+	ptrdiff_t local_ni, local_i_start;
+	ptrdiff_t local_no, local_o_start;
+};
+
+
+struct process_map {
+	int nr_of_procs;
+	struct mfftw_mpi_info *infos;
+};
+
+
+struct mfftw_mpi_info {
+	int rank;
+	struct array_meta arrmeta;
+	fftw_complex *local_slice;
+	struct process_map procmap;
+};
+
+
+struct mfftw_plan {
+	Py_ssize_t data_len;
+	fftw_plan plan;
+	PyArrayObject *in_arr, *out_arr;
+	struct mfftw_mpi_info *info;
+};
+
+
+PyObject *
+mfftw_encapsulate_plan(fftw_plan, PyArrayObject*, PyArrayObject*,
+		struct mfftw_mpi_info *);
 struct mfftw_plan* mfftw_unwrap_capsule(PyObject *);
 
 void mfftw_data_from_npy_to_fftw(PyArrayObject *, fftw_complex *, Py_ssize_t);
@@ -53,11 +84,4 @@ fftw_complex* reinterpret_numpy_to_fftw_arr(PyArrayObject *np);
 char** check_get_str_array(PyObject *, int);
 
 
-struct mfftw_plan {
-	Py_ssize_t data_len;
-	fftw_plan plan;
-	PyArrayObject *in_arr, *out_arr;
-};
-
-
-#endif /* __minifftw_ */
+#endif /* MINIFFTW */
