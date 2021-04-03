@@ -32,7 +32,7 @@ else:
 
 setup(name = 'minifftw', version = '0.9',
         license = 'GPLv3',
-        description = 'minimalistic, uncomplete FFTW wrapper without MPI support.',
+        description = 'minimalistic, incomplete FFTW wrapper without MPI support.',
         ext_modules = [main_module],
         author='Philipp Stanner',
         author_email='stanner@posteo.de')
