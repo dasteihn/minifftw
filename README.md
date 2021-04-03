@@ -213,9 +213,11 @@ try:
 except:
 	print("could not import wisdom")
 
-data_in = np.random.random(data_len) + np.random.random(data_len) * 1j
+data_in = np.zeros(data_len, dtype="complex128")
 data_out = np.zeros(data_len, dtype="complex128")
 p = m.plan_dft_1d(data_in, data_out, m.FFTW_FORWARD, m.FFTW_ESTIMATE)
+
+# initialize data_in here
 
 # the assignment is optional. mfftw.execute will fill data_out automatically
 result = mfftw.execute(plan)
@@ -238,6 +240,9 @@ mfftw.finit()
 The first call (m.init()) is very important when using MPI: It will take your
 environment and pass it to the MPI\_Init() function. Also, this function will
 configure the number of threads the FFTW uses to heat up your machine.
+
+**Like in pure C-FFTW, it's very important to initialize your array with your
+real payload data _after_ creating the plan.**
 
 The plan function will prepare everything the FFTW needs to operate and pack
 it into a python-capsule, which later has to be passed to all following
