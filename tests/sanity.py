@@ -25,8 +25,8 @@ data_in = np.zeros(data_len) + np.zeros(data_len) * 1j
 data_out = data_in.copy()
 
 #print(data_in)
-p_fwd = m.plan_dft_1d(data_in, data_out, m.FFTW_FORWARD, m.FFTW_EXHAUSTIVE);
-p_bwd = m.plan_dft_1d(data_out, data_in, m.FFTW_BACKWARD, m.FFTW_EXHAUSTIVE);
+p_fwd = m.plan_dft_1d(data_in, data_out, m.FFTW_FORWARD, m.FFTW_ESTIMATE);
+p_bwd = m.plan_dft_1d(data_out, data_in, m.FFTW_BACKWARD, m.FFTW_ESTIMATE);
 
 for i in range(0, len(data_in)):
     data_in[i] = i + i*1j
@@ -39,7 +39,8 @@ for i in range(0, 1000):
 #    if m.get_mpi_rank() == 0:
 #        print(data_in)
 
-checker(data_orig, data_in)
+if m.get_mpi_rank() == 0:
+    checker(data_orig, data_in)
 
 #print(data_orig, "\n", data_in)
 #print(data_in, data_out)
