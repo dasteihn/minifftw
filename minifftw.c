@@ -309,13 +309,6 @@ plan_dft_1d(PyObject *self, PyObject *args)
 }
 #endif /* MFFTW_MPI */
 
-static PyObject *
-get_pseudo_rank(PyObject *self, PyObject *args)
-{
-	int rank = 0;
-
-	return Py_BuildValue("i", rank);
-}
 
 #ifdef MFFTW_MPI
 
@@ -353,6 +346,14 @@ import_wisdom_mpi(PyObject *self, PyObject *args)
 }
 
 #else
+
+static PyObject *
+get_pseudo_rank(PyObject *self, PyObject *args)
+{
+	int rank = 0;
+
+	return Py_BuildValue("i", rank);
+}
 
 static PyObject *
 import_wisdom(PyObject *self, PyObject *args)
