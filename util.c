@@ -129,18 +129,41 @@ print_complex_nr(fftw_complex nr)
 	printf("%lf + %lfj ", creal(nr), cimag(nr));
 }
 
+
+void
+debug_fftw_array_print(fftw_complex *arr, int len)
+{
+	int i = 0;
+
+	for (i = 0; i < len; i++) {
+		print_complex_nr(arr[i]);
+		if (i % 4 == 0)
+			printf("\n");
+	}
+	printf("\n\n");
+}
+
+
 void
 debug_array_print(struct mfftw_plan *mplan)
 {
+	int printed = 0;
 	ssize_t i;
 	fftw_complex *arr_in = reinterpret_numpy_to_fftw_arr(mplan->in_arr);
 	fftw_complex *arr_out = reinterpret_numpy_to_fftw_arr(mplan->out_arr);
 
 	for (i = 0; i < mplan->data_len; i++) {
 		print_complex_nr(arr_in[i]);
+		if (printed++ % 4 == 0)
+			printf("\n");
 	}
+	printf("\n\n");
+
 	for (i = 0; i < mplan->data_len; i++) {
 		print_complex_nr(arr_out[i]);
+		if (printed++ % 4 == 0)
+			printf("\n");
 	}
+
 	printf("\n");
 }

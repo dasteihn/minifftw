@@ -1,5 +1,5 @@
 /*
- *  Copyright 2020, Philipp Stanner, <stanner@posteo.de>
+ *  Copyright 2020, 2021, Philipp Stanner, <stanner@posteo.de>
  *
  * This file is part of Minifftw.
  * Minifftw is free software: you can redistribute it and/or modify
@@ -42,12 +42,16 @@ mfftw_destroy_capsule(PyObject *capsule)
 	Py_DECREF(plan->in_arr);
 	Py_DECREF(plan->out_arr);
 
-	/* Only process 0 has allocated something here. */
-	if (plan->info->rank == 0)
-		free(plan->info->procmap.infos);
+	/* When MPI is not used, this is NULL */
+	if (plan->info) {
+		free(plan->info->local_slice);
+		free(plan->info);
 
-	free(plan->info->local_slice);
-	free(plan->info);
+		/* Only process 0 has allocated something here. */
+		if (plan->info->rank == 0)
+			free(plan->info->procmap.infos);
+	}
+
 	free(plan);
 }
 
@@ -118,6 +122,8 @@ mfftw_unwrap_capsule(PyObject *mplan)
 		PyErr_SetString(PyExc_TypeError, "Expected a capsule.");
 		return NULL;
 	}
+
+	puts("GetPointer...");
 
 	return (struct mfftw_plan *)PyCapsule_GetPointer(mplan, NULL);
 }

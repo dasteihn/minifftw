@@ -1,5 +1,5 @@
 /*
- *  Copyright 2020, Philipp Stanner, <stanner@posteo.de>
+ *  Copyright 2020, 2021, Philipp Stanner, <stanner@posteo.de>
  *
  * This file is part of Minifftw.
  * Minifftw is free software: you can redistribute it and/or modify
@@ -58,6 +58,20 @@ prepare_arrays(PyObject *tmp1, PyObject *tmp2,
 
 #ifdef MFFTW_MPI
 
+static void
+cleanup_mfftw_mpi_info(struct mfftw_mpi_info *info)
+{
+	if (!info)
+		return;
+
+	if (info->local_slice)
+		free(info->local_slice);
+
+	memset(info, 0, sizeof(struct mfftw_mpi_info));
+	free(info);
+}
+
+
 static struct mfftw_mpi_info *
 prepare_mfftw_mpi_info(long long array_len, int direction, int flags)
 {
@@ -76,12 +90,22 @@ prepare_mfftw_mpi_info(long long array_len, int direction, int flags)
 	info->local_slice = fftw_alloc_complex(info->arrmeta.local);
 	if (!info->local_slice)
 		goto err_out;
+	memset(info->local_slice, 0, info->arrmeta.local);
 
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 	info->rank = rank;
 
 	MPI_Comm_size(MPI_COMM_WORLD, &nr_of_procs);
 	info->procmap.nr_of_procs = nr_of_procs;
+
+	if (rank == 1) {
+		printf("I'm the slave and have this data:\t");
+		printf("%llu %llu %llu %llu", info->arrmeta.local_ni,
+				info->arrmeta.local_i_start,
+				info->arrmeta.local_no,
+				info->arrmeta.local_o_start);
+
+	}
 
 	return info;
 
@@ -101,11 +125,16 @@ receive_subinfo(struct array_meta *meta, int rank)
 	ret = MPI_Recv(arrmeta, 5, MPI_UNSIGNED_LONG_LONG, rank, 0,
 			MPI_COMM_WORLD, &stat);
 
+	for (int i = 0; i < 5; i++)
+		printf("Received: %lu\n", arrmeta[i]);
+
 	meta->local = arrmeta[0];
 	meta->local_ni = arrmeta[1];
 	meta->local_i_start = arrmeta[2];
 	meta->local_no = arrmeta[3];
 	meta->local_o_start = arrmeta[4];
+
+	printf("Stored: %lu\n", meta->local_ni);
 
 	return ret;
 }
@@ -137,6 +166,7 @@ collect_mfftw_mpi_infos(struct mfftw_mpi_info *info)
 }
 
 
+/* inform Lehnsherr */
 static int
 send_mfftw_mpi_info(struct array_meta *meta)
 {
@@ -160,10 +190,14 @@ send_mfftw_mpi_info(struct array_meta *meta)
 static int
 synchronize_process_map(struct mfftw_mpi_info *info)
 {
+	int ret;
+
 	if (info->rank == 0)
-		collect_mfftw_mpi_infos(info);
+		ret = collect_mfftw_mpi_infos(info);
 	else
-		send_mfftw_mpi_info(&info->arrmeta);
+		ret = send_mfftw_mpi_info(&info->arrmeta);
+
+	return ret;
 }
 
 
@@ -177,11 +211,11 @@ synchronize_process_map(struct mfftw_mpi_info *info)
 static PyObject *
 plan_dft_1d_mpi(PyObject *self, PyObject *args)
 {
+	fftw_complex *mfftw_in_arr, *mfftw_out_arr;
 	struct mfftw_mpi_info *info = NULL;
 	PyObject *tmp1 = NULL, *tmp2 = NULL;
 	fftw_plan plan;
 	PyArrayObject *py_in_arr = NULL, *py_out_arr = NULL;
-	fftw_complex *mfftw_in_arr = NULL, *mfftw_out_arr = NULL;
 	long long array_len = 0;
 	int success = 0, direction, flags;
 
@@ -195,6 +229,14 @@ plan_dft_1d_mpi(PyObject *self, PyObject *args)
 		PyErr_SetString(Mfftw_error, "Could not prepare arrays.");
 		return NULL;
 	}
+	
+	// TODO debug foo. Remove
+	/*
+	mfftw_in_arr = reinterpret_numpy_to_fftw_arr(py_in_arr);
+	mfftw_out_arr = reinterpret_numpy_to_fftw_arr(py_out_arr);
+	memset(mfftw_in_arr, 0, array_len * sizeof(fftw_complex));
+	memset(mfftw_out_arr, 0, array_len * sizeof(fftw_complex));
+	*/
 
 	info = prepare_mfftw_mpi_info(array_len, direction, flags);
 	if (!info) {
@@ -202,31 +244,37 @@ plan_dft_1d_mpi(PyObject *self, PyObject *args)
 		return NULL;
 	}
 
-	// TODO check error
-	synchronize_process_map(info);
+	puts("syncing map");
+	if (synchronize_process_map(info) != 0) {
+		cleanup_mfftw_mpi_info(info);
+		PyErr_SetString(Mfftw_error, "Could not synchronize MPI map.");
+		return NULL;
+	}
+	puts("synced map");
 
 	/*
 	 * COMM_WORLD means: All existing MPI-tasks will participate in calculating.
 	 */
-	// TODO replace with local info
-	plan = fftw_mpi_plan_dft_1d(array_len, mfftw_in_arr, mfftw_out_arr,
-		MPI_COMM_WORLD, direction, flags);
+	plan = fftw_mpi_plan_dft_1d(array_len,
+			info->local_slice, info->local_slice,
+			MPI_COMM_WORLD, direction, flags);
+
+	printf("local slice 1 addr: %p\n", info->local_slice);
 
 	if (!plan) {
+		cleanup_mfftw_mpi_info(info);
 		PyErr_SetString(Mfftw_error, "Could not create plan.");
-		free(info);
 		return NULL;
 	}
 
 	return mfftw_encapsulate_plan(plan, py_in_arr, py_out_arr, info);
 }
 
-#endif /* MFFTW_MPI */
+#else 
 
 static PyObject *
 plan_dft_1d(PyObject *self, PyObject *args)
 {
-	struct mfftw_mpi_info *info = NULL;
 	PyObject *tmp1 = NULL, *tmp2 = NULL;
 	fftw_plan plan;
 	PyArrayObject *py_in_arr = NULL, *py_out_arr = NULL;
@@ -257,9 +305,17 @@ plan_dft_1d(PyObject *self, PyObject *args)
 	}
 
 	/* info is passed empty and is not used without MPI. */
-	return mfftw_encapsulate_plan(plan, py_in_arr, py_out_arr, info);
+	return mfftw_encapsulate_plan(plan, py_in_arr, py_out_arr, NULL);
 }
+#endif /* MFFTW_MPI */
 
+static PyObject *
+get_pseudo_rank(PyObject *self, PyObject *args)
+{
+	int rank = 0;
+
+	return Py_BuildValue("i", rank);
+}
 
 #ifdef MFFTW_MPI
 
@@ -382,31 +438,41 @@ export_wisdom(PyObject *self, PyObject *args)
 static int
 transmit_payload(int rank, fftw_complex *arr, size_t size)
 {
-	return MPI_Send(arr, size, MPI_C_DOUBLE_COMPLEX, rank,
-			0, MPI_COMM_WORLD);
+	int ret;
+	printf("trying to transmit %u elements to %i\n", size, rank);
+	ret = MPI_Send(arr, size, MPI_C_DOUBLE_COMPLEX, rank, 0, MPI_COMM_WORLD);
+	if (ret == 0)
+		puts("successfully transmitted.");
+
+	return ret;
 }
 
 
 static int
 receive_payload(int rank, fftw_complex *arr, size_t size)
 {
+	int ret;
 	MPI_Status stat;
 
-	return MPI_Recv(arr, size, MPI_C_DOUBLE_COMPLEX, rank,
+	ret = MPI_Recv(arr, size, MPI_C_DOUBLE_COMPLEX, rank,
 			0, MPI_COMM_WORLD, &stat);
+	if (ret == 0)
+		puts("successfully received.");
+
+	return ret;
 }
 
 
-/* Leibeigener to Lehnsherr */
+/* Lehnsmann to Lehnsherr */
 static int
 distribute_one_payload(struct mfftw_plan *plan)
 {
-	return MPI_Send(plan->info->local_slice, plan->info->arrmeta.local_ni,
-			MPI_C_DOUBLE_COMPLEX, 0, 0, MPI_COMM_WORLD);
+	return transmit_payload(0, plan->info->local_slice,
+			plan->info->arrmeta.local_no);
 }
 
 
-/* only useful for meisterprocess */
+/* Lehnsherr to Lehnsmaenner */
 static int
 distribute_all_payloads(struct mfftw_plan *plan)
 {
@@ -416,11 +482,19 @@ distribute_all_payloads(struct mfftw_plan *plan)
 	size_t tmp_i_start, tmp_ni;
 	fftw_complex *in_arr;
 
-	/* Use process 0 local size as qualifier for the tmp buff size. */
 	in_arr = reinterpret_numpy_to_fftw_arr(plan->in_arr);
 
+	printf("Moving %lu elements from head.\n", plan->info->arrmeta.local_ni);
+	/* Lehnsherr has to copy his own stuff as well */
+	memcpy(plan->info->local_slice,
+			&in_arr[plan->info->arrmeta.local_i_start],
+			plan->info->arrmeta.local_ni * sizeof(fftw_complex));
+
+	printf("Trying to distribute to %u\n",
+			plan->info->procmap.nr_of_procs - 1);
+
 	for (i = 1; i < plan->info->procmap.nr_of_procs; i++) {
-		tmp_info = &plan->info[i];
+		tmp_info = &plan->info->procmap.infos[i];
 		tmp_i_start = tmp_info->arrmeta.local_i_start;
 		tmp_ni = tmp_info->arrmeta.local_ni;
 
@@ -428,6 +502,9 @@ distribute_all_payloads(struct mfftw_plan *plan)
 		if (ret != 0)
 			break;
 	}
+
+	if (ret == 0)
+		puts("successfully distributed all payloads.");
 
 	return ret;
 }
@@ -437,34 +514,37 @@ distribute_all_payloads(struct mfftw_plan *plan)
 static int
 collect_one_payload(struct mfftw_plan *plan)
 {
-	int ret;
-	MPI_Status stat;
-
-	ret = MPI_Recv(plan->info->local_slice, plan->info->arrmeta.local_ni,
-			MPI_C_DOUBLE_COMPLEX, 0, 0, MPI_COMM_WORLD, &stat);
-
-	return ret;
+	return receive_payload(0, plan->info->local_slice,
+			plan->info->arrmeta.local_ni);
 }
 
 
+/* Lehnsherr receives the results. */
 static int
 collect_all_payloads(struct mfftw_plan *plan)
 {
 	int i, ret = 0;
 	struct mfftw_mpi_info *tmp_info;
-	// TODO: Do something smarter
-	size_t tmp_i_start, tmp_ni;
-	fftw_complex *in_arr;
+	size_t tmp_o_start, tmp_no;
+	fftw_complex *out_arr;
 
-	/* Use process 0 local size as qualifier for the tmp buff size. */
-	in_arr = reinterpret_numpy_to_fftw_arr(plan->in_arr);
+	out_arr = reinterpret_numpy_to_fftw_arr(plan->out_arr);
+
+	printf("Moving %lu elements to head.\n", plan->info->arrmeta.local_no);
+	/* Lehnsherr has to copy his own result as well. */
+	memcpy(&out_arr[plan->info->arrmeta.local_o_start],
+			plan->info->local_slice,
+			plan->info->arrmeta.local_no * sizeof(fftw_complex));
 
 	for (i = 1; i < plan->info->procmap.nr_of_procs; i++) {
-		tmp_info = &plan->info[i];
-		tmp_i_start = tmp_info->arrmeta.local_i_start;
-		tmp_ni = tmp_info->arrmeta.local_ni;
+		tmp_info = &plan->info->procmap.infos[i];
+		tmp_o_start = tmp_info->arrmeta.local_o_start;
+		printf("storing shit at %lu\n", tmp_o_start);
+		tmp_no = tmp_info->arrmeta.local_no;
+		printf("nr of elms to store at shit: %lu\n", tmp_no);
 
-		ret = receive_payload(i, &in_arr[tmp_i_start], tmp_ni);
+		ret = receive_payload(i, &out_arr[tmp_o_start], tmp_no);
+		//memset(&out_arr[tmp_o_start], 0, tmp_no * sizeof(fftw_complex));
 		if (ret != 0)
 			break;
 	}
@@ -484,9 +564,25 @@ execute(PyObject *self, PyObject *args)
 	int success = PyArg_ParseTuple(args, "O", &plancapsule);
 	if (success == 0 || !plancapsule)
 		return NULL;
+
+	puts("unwrapping capsule");
 	mplan = mfftw_unwrap_capsule(plancapsule);
 	if (!mplan)
 		return NULL;
+	puts("unwrapped capsule");
+
+	/*
+	int rank;
+	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+	if (rank == 1) {
+		//debug_array_print(mplan);
+		debug_fftw_array_print(mplan->info->local_slice,
+				mplan->info->arrmeta.local_ni);
+	}
+	*/
+//	if (rank == 1)
+//		debug_array_print(mplan);
 
 #ifdef MFFTW_MPI
 	if (mplan->info->rank == 0)
@@ -495,7 +591,9 @@ execute(PyObject *self, PyObject *args)
 		collect_one_payload(mplan);
 #endif
 
+	printf("fftw: %i executing.\n", mplan->info ? mplan->info->rank : 0);
 	fftw_execute(mplan->plan);
+	printf("fftw: %i executed.\n", mplan->info ? mplan->info->rank : 0);
 
 #ifdef MFFTW_MPI
 	if (mplan->info->rank == 0)
@@ -503,6 +601,18 @@ execute(PyObject *self, PyObject *args)
 	else
 		distribute_one_payload(mplan);
 #endif
+	/*
+	if (rank == 0) {
+		//debug_array_print(mplan);
+		debug_array_print(mplan);
+	}
+	if (rank == 1) {
+		sleep(2);
+		//debug_array_print(mplan);
+		debug_fftw_array_print(mplan->info->local_slice,
+				mplan->info->arrmeta.local_ni);
+	}
+	*/
 
 	Py_INCREF(mplan->out_arr);
 	return (PyObject *)(mplan->out_arr);
@@ -604,7 +714,7 @@ finit(PyObject *self, PyObject *args)
 static PyMethodDef Minifftw_methods[] = {
 #ifdef MFFTW_MPI
 	{"init", init, METH_VARARGS, "prepare FFTW and MPI"},
-	{"get_mpi_rank", get_mpi_rank, METH_VARARGS, "get the MPI rank"},
+	{"get_mpi_rank", get_mpi_rank, METH_VARARGS, "get MPI rank"},
 	{"import_wisdom", import_wisdom_mpi, METH_VARARGS,
 		"import wisdom and broadcast it over MPI"},
 	{"export_wisdom", export_wisdom_mpi, METH_VARARGS,
@@ -612,6 +722,7 @@ static PyMethodDef Minifftw_methods[] = {
 	{"plan_dft_1d", plan_dft_1d_mpi, METH_VARARGS, "one dimensional FFTW"},
 #else
 	{"init", init, METH_VARARGS, "prepare FFTW"},
+	{"get_mpi_rank", get_pseudo_rank, METH_VARARGS, "get MPI pseudo rank"},
 	{"import_wisdom", import_wisdom, METH_VARARGS,
 		"import the FFTW wisdom from a filename/path"},
 	{"export_wisdom", export_wisdom, METH_VARARGS,
