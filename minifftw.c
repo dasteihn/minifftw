@@ -331,16 +331,34 @@ import_wisdom_mpi(PyObject *self, PyObject *args)
 
 	int rank = -1;
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-	if (rank != 0)
-		Py_RETURN_NONE;
 
-	/* Look if we have Wisdom. If we do, broadcast it! */
-	if (fftw_import_wisdom_from_filename(wisdom_path) != 0) {
-		fftw_mpi_broadcast_wisdom(MPI_COMM_WORLD);
-	} else {
-		PyErr_SetString(Mfftw_error, "fftw-wisdom can not be imported.");
-		return NULL;
+	if (rank == 0) {
+		if (fftw_import_wisdom_from_filename(wisdom_path) != 1) {
+			/*
+			PyErr_SetString(Mfftw_error, "fftw-wisdom can not be imported.");
+			return NULL;
+			*/
+			// FIXME: warn the user without deadlock danger.
+		}
 	}
+
+	fftw_mpi_broadcast_wisdom(MPI_COMM_WORLD);
+
+	Py_RETURN_NONE;
+}
+
+static PyObject *
+import_system_wisdom_mpi(PyObject *self, PyObject *args)
+{
+	int rank = -1;
+	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+	if (rank == 0) {
+		// FIXME: warn user in case of failure without deadlock danger
+		fftw_import_system_wisdom();
+	}
+
+	fftw_mpi_broadcast_wisdom(MPI_COMM_WORLD);
 
 	Py_RETURN_NONE;
 }
@@ -370,19 +388,10 @@ import_wisdom(PyObject *self, PyObject *args)
 
 	Py_RETURN_NONE;
 }
-#endif /* MFFTW_MPI */
-
 
 static PyObject *
 import_system_wisdom(PyObject *self, PyObject *args)
 {
-#ifdef MFFTW_MPI
-	int rank = -1;
-	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-	if (rank != 0)
-		Py_RETURN_NONE;
-#endif /* MFFTW_MPI */
-
 	if (fftw_import_system_wisdom() == 0) {
 		PyErr_SetString(Mfftw_error, "Can not import system-wisdom.");
 		return NULL;
@@ -390,26 +399,31 @@ import_system_wisdom(PyObject *self, PyObject *args)
 
 	Py_RETURN_NONE;
 }
+#endif /* MFFTW_MPI */
+
 
 
 #ifdef MFFTW_MPI
 static PyObject *
 export_wisdom_mpi(PyObject *self, PyObject *args)
 {
-	int rank = -1, ret = 0;
+	int rank = -1, ret = 1;
 	char *wisdom_path = NULL;
 	if (PyArg_ParseTuple(args, "s", &wisdom_path) == 0)
 		return NULL;
 
-	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-	if (rank != 0)
-		Py_RETURN_NONE;
-
 	fftw_mpi_gather_wisdom(MPI_COMM_WORLD);
-	ret = fftw_export_wisdom_to_filename(wisdom_path);
-	if (ret == 0) {
-		PyErr_SetString(Mfftw_error, "Could not store mpi-fftw-wisdom.");
-		return NULL;
+
+	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+	if (rank == 0) {
+		ret = fftw_export_wisdom_to_filename(wisdom_path);
+		if (ret == 0) {
+			/*
+			PyErr_SetString(Mfftw_error, "Could not store mpi-fftw-wisdom.");
+			return NULL;
+			*/
+			// FIXME: warn the user without deadlock danger
+		}
 	}
 
 	Py_RETURN_NONE;
@@ -545,7 +559,6 @@ collect_all_payloads(struct mfftw_plan *plan)
 		printf("nr of elms to store at shit: %lu\n", tmp_no);
 
 		ret = receive_payload(i, &out_arr[tmp_o_start], tmp_no);
-		//memset(&out_arr[tmp_o_start], 0, tmp_no * sizeof(fftw_complex));
 		if (ret != 0)
 			break;
 	}
@@ -586,6 +599,7 @@ execute(PyObject *self, PyObject *args)
 //		debug_array_print(mplan);
 
 #ifdef MFFTW_MPI
+	puts("NO");
 	if (mplan->info->rank == 0)
 		distribute_all_payloads(mplan);
 	else
@@ -597,6 +611,7 @@ execute(PyObject *self, PyObject *args)
 	printf("fftw: %i executed.\n", mplan->info ? mplan->info->rank : 0);
 
 #ifdef MFFTW_MPI
+	puts("NO");
 	if (mplan->info->rank == 0)
 		collect_all_payloads(mplan);
 	else
@@ -716,24 +731,26 @@ static PyMethodDef Minifftw_methods[] = {
 #ifdef MFFTW_MPI
 	{"init", init, METH_VARARGS, "prepare FFTW and MPI"},
 	{"get_mpi_rank", get_mpi_rank, METH_VARARGS, "get MPI rank"},
+	{"import_system_wisdom", import_system_wisdom_mpi, METH_VARARGS,
+		"import the FFTW system-wisdom"},
 	{"import_wisdom", import_wisdom_mpi, METH_VARARGS,
 		"import wisdom and broadcast it over MPI"},
 	{"export_wisdom", export_wisdom_mpi, METH_VARARGS,
 		"gather wisdom over MPI and export it"},
-	{"plan_dft_1d", plan_dft_1d_mpi, METH_VARARGS, "one dimensional FFTW"},
+	{"plan_dft_1d", plan_dft_1d_mpi, METH_VARARGS, "one dimensional FFT"},
 #else
 	{"init", init, METH_VARARGS, "prepare FFTW"},
 	{"get_mpi_rank", get_pseudo_rank, METH_VARARGS, "get MPI pseudo rank"},
+	{"import_system_wisdom", import_system_wisdom, METH_VARARGS,
+		"import the FFTW system-wisdom"},
 	{"import_wisdom", import_wisdom, METH_VARARGS,
 		"import the FFTW wisdom from a filename/path"},
 	{"export_wisdom", export_wisdom, METH_VARARGS,
 		"export the FFTW wisdom to a filename/path"},
-	{"plan_dft_1d", plan_dft_1d, METH_VARARGS, "one dimensional FFTW"},
+	{"plan_dft_1d", plan_dft_1d, METH_VARARGS, "one dimensional FFT"},
 #endif /* MFFTW_MPI */
 	{"finit", finit, METH_VARARGS, "finalize everything"},
 	{"execute", execute, METH_VARARGS, "execute a previously created plan"},
-	{"import_system_wisdom", import_system_wisdom, METH_VARARGS,
-		"import the FFTW system-wisdom"},
 	{NULL, NULL, 0, NULL},
 };
 
@@ -775,6 +792,8 @@ PyInit_minifftw(void)
 
 	/* Algorithm restriction flags */
 	PyModule_AddIntMacro(m, FFTW_DESTROY_INPUT);
+	PyModule_AddIntMacro(m, FFTW_PRESERVE_INPUT);
+	PyModule_AddIntMacro(m, FFTW_UNALIGNED);
 
 	import_array();
 
