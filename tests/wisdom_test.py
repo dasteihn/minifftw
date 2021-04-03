@@ -2,7 +2,6 @@ import sys
 import time
 import numpy as np
 import random
-sys.path.append("./build/lib.linux-x86_64-3.7")
 
 import minifftw as m
 
@@ -27,4 +26,5 @@ except:
     print("could not export wisdom")
 
 print("Test run successfully! :)")
+time.sleep(1)
 m.finit()
