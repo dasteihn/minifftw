@@ -16,20 +16,21 @@ def checker(a, b):
 
     print("Ok: {}, Not Ok: {}".format(ok, not_ok))
 
-data_len = 8192
+
+data_len = int(2**18)
 nr_of_threads = 1
-
 m.init(sys.argv, nr_of_threads)
+
 data_in = np.zeros(data_len) + np.zeros(data_len) * 1j
-for i in range(0, len(data_in)):
-    data_in[i] = i + i*1j
-
-data_orig = data_in.copy()
-
-p_fwd = m.plan_dft_1d(data_in, data_in, m.FFTW_FORWARD, m.FFTW_ESTIMATE)
-p_bwd = m.plan_dft_1d(data_in, data_in, m.FFTW_BACKWARD, m.FFTW_ESTIMATE)
+data_out = data_in.copy()
 
 #print(data_in)
+p_fwd = m.plan_dft_1d(data_in, data_out, m.FFTW_FORWARD, m.FFTW_EXHAUSTIVE);
+p_bwd = m.plan_dft_1d(data_out, data_in, m.FFTW_BACKWARD, m.FFTW_EXHAUSTIVE);
+
+for i in range(0, len(data_in)):
+    data_in[i] = i + i*1j
+data_orig = data_in.copy()
 
 for i in range(0, 1000):
     m.execute(p_fwd)
@@ -38,13 +39,10 @@ for i in range(0, 1000):
 #    if m.get_mpi_rank() == 0:
 #        print(data_in)
 
-if m.get_mpi_rank() == 0:
-    checker(data_orig, data_in)
+checker(data_orig, data_in)
 
-print("executed")
-
-#if m.get_mpi_rank() == 0:
-#    print(data_orig, "\n", data_in)
+#print(data_orig, "\n", data_in)
+#print(data_in, data_out)
 
 time.sleep(1)
 m.finit()
