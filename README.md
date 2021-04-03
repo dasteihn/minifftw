@@ -1,5 +1,7 @@
 # Minimalistic MPI-FFTW
 
+Continuous array FFTs with MPI.
+
 This is a minimalistic Pythonwrapper for the MPI-FFTW. As every human
 achievement, it is created out of hate for existing solutions.
 
@@ -8,15 +10,27 @@ FFTW offers. Probably just the 1D transforms.
 
 This wrapper is tied to numpy and only accepts numpy arrays as payload.
 
-Please note that due to a rather complicated situation with the Message Passing
-Interface, minifftw does not (yet) support real distributed memory. So if you're
-working on a cluster consisting of nodes with e.g. 40GB *available* RAM per node,
-the largest array you'll be able to transform is 40GB large. Have a look at
-[mpi.md](./doc/mpi.md) for details.
+Please note the following: MPI-FFTW only works as distributed memory FFT. This
+means each node locally allocates *and  fill* the slice of the array to transform.
+While FFTW will take care of synchronizing the work and computing valid results,
+these results will be spread over all nodes, each only having a local slice of
+the result.
 
-Also note that, just like the C-FFTW, this wrapper initializes and finalizes
-the Message Passing Interface automatically, without giving you direct control
-over it.
+The FFTW is not responsible for reassembling the array. That's why this wrapper
+has been created: It is intended for users who want to transform arrays small
+enough to fit into a single node's memory, but whose transforms are so work
+intensive that MPI parallelization might still pay off.
+
+**Keep in mind that when using with MPI, after executing a plan, only the process
+with MPI rank 0 will have valid data.**
+
+See the below section "MPI Distribution" for details.
+
+(That's probably not what FFTW has been created for, since transforms are the
+more efficient the larger the arrays are. But I don't care. Plus we needed this
+for an internal research project.)
+
+Compilation is also a bit tricky. Have a look at [mpi.md](./doc/mpi.md) for details.
 
 ![minifftw callstack](doc/images/fftw-calls.png)
 
@@ -25,14 +39,17 @@ you build it. It uses the FFTW in threaded mode, therefore resulting in hybrid
 mode when using MPI. Of course, you could set the number of threads to one and
 emulate the behavior of a pure MPI-FFTW.
 
+Therefore, the great advantage is that you can use mfftw the same way for both
+with and without MPI.
+
 
 ## Project Status
 
 This project is work in progress and currently in beta state.
-It should be usable and free of errors according the serial FFTW.
+In my tests it computes valid results. Though you'd might want to check for
+yourself before using it.
 
-The MPI-FFTW works as well, but there are some stumbling blocks according MPI
-finalization which are currently under testing. Feel free to help ;)
+The API will most likely remain stable, though functions' behavior might change.
 
 ### Implemented FFTW functionality
 
@@ -80,7 +97,7 @@ On a typical linux distro, the required packages might be called:
 
 ### Linux Clusters
 
-See in clusters/ for a list of the supported clusters. The folder also contains
+See in [clusters](./clusters/) for a list of the supported clusters. The folder also contains
 sub-READMEs which are customized to the cluster and will hopefully help you
 getting the wrapper to run on your target.
 
@@ -91,7 +108,8 @@ To build, run from the main folder:
 
 ## Usage
 
-> See in `tests/` for examples.
+> See in [tests](./tests/) for examples.
+
 
 ### Functions
 
@@ -148,6 +166,8 @@ therefore, on most platforms, you'll be limited to a maximum array size of
 
 *Returns:*  New reference to output\_array from `minifftw.plan_XXX(...)`
 
+When using with MPI, only the process with MPI-rank 0 will generate valid output.
+
 
 #### get\_mpi\_rank
 
@@ -155,9 +175,10 @@ therefore, on most platforms, you'll be limited to a maximum array size of
 
 *Parameters*: None
 
-*Returns*: The MPI-Rank (integer) of your application
+*Returns*: The MPI-Rank (integer) of your application when build with MPI, 0 otherwise.
 
-Only available in MPI mode.
+For convenience, this function also exists when you don't build for MPI usage.
+So you don't have to change your code.
 
 #### finit
 
@@ -167,11 +188,12 @@ Only available in MPI mode.
 
 *Returns*: None
 
-Deallocates all resources used by FFTW and the wrapper. If built with the MPI
+Deallocates all resources used by FFTW and MFFTW. If built with the MPI
 version, this function will **terminate all** your applications. This is done
 due to some inconveniences described in [MPI](./doc/mpi.md).
 So, make sure your simulation has stored its results and closed all file
 descriptors prior to calling this function.
+
 
 ### Basics
 
@@ -204,6 +226,11 @@ try:
 except:
 	print("could not export wisdom")
 
+# When using MPI, only rank 0 will have the valid result.
+# When not using MPI, the rank function always returns 0.
+if mfftw.get_mpi_rank() == 0:
+	print(result)
+
 # ...
 mfftw.finit()
 ```
@@ -225,6 +252,44 @@ use the MPI version or not. This way, you will never have to adjust your python
 code when using this wrapper, even when you'll run it on a cluster.
 
 
+## MPI Distribution
+
+As hinted by the introduction, MFFTW uses a hacky trick to make FFTW easier to
+use for end users.
+Transparently for the user, it distributes the Lehnsherr process's array to the
+Lehnsmann processes before executing, and collects the data again after executing.
+
+This might turn out to be a bottleneck on some systems, since process 0 might be
+busy with sending and receiving data a lot. On the other hand it completely frees
+the user from having to deal with MPI manually.
+
+*Example:*
+
+Imagine you have an array of 4 million entries. You start your simulation on
+4 MPI processes. This will happen:
+1. In the beginning, all 4 processes will have the same array.
+2. When executing a plan the process with ID 0 (Lehnsherr) will transmit 1
+   million entries of his own array to every one of the 3 remaining processes,
+   and he will keep the remaining one million entries for himself.
+3. Each processes (including Lehnsherr) will copy the 1M entries to another local
+	array (not visible for the python world) on which the FFTs will be executed.
+4. After execution, the local copy is send back to the original input array of
+	Lehnsherr, who keeps track which Lehnsmann process got which slice in
+	the first place.
+5. After an execution, therefore, only process with rank 0 has a valid array.
+
+**You can execute as often as you want, but only the Rank 0 process will have
+valid data in the end.**
+
+You can handle this very easily i.e. this way:
+
+```
+out = mfftw.execute(plan)
+if mfftw.get_mpi_rank() == 0:
+	print(out)
+```
+
+
 ### MPI Usage
 
 Once the MPI wrapper is build for your target, there are only a few things to
@@ -239,23 +304,10 @@ For example, `import_wisdom` will check if the calling process has
 MPI rank 0. If it does, it will import the wisdom and broadcast it to your other
 processes.
 
-#### Files
+#### Usage
 
-The most important thing to keep in mind is that writing your simulation's
-results to a file will result in undefined results if you do not pay attention
-to the MPI-ranks.
 
-One way to solve this is to make every process write into its own file:
-
-```py
-result = mfftw.execute(my_plan)
-
-rank = mfftw.get_mpi_rank()
-with open("result_file_mpi_rank_" + str(rank), "w") as f:
-	f.write(result)
-```
-
-Keeping this in mind, tasks can be started as usual either with
+Tasks can be started as usual either with
 
 ```
 mpiexec -np <N> python3 my_minifftw_simulation.py
@@ -276,9 +328,9 @@ This wrapper applies a few tricks to make the usage of FFTW more easy for the
 end user. This results in a few points which should be kept in mind.
 
 Additionally, keep in mind that minifftw just wraps FFTW – so the behavior
-documented for the FFTW will also apply to this wrapper. For instance, the
-planner-functions will overwrite your input array with arbitrary data, so you
-should fill them with your payload once planing is completed.
+documented for the FFTW will mostly also apply to this wrapper. For instance,
+the planner-functions will overwrite your input array with arbitrary data, so
+you should fill them with your payload once planing is completed.
 
 #### Plan Capsules
 
@@ -309,14 +361,10 @@ as a flag in the plan creation functions.
 ## TODO
 
 - Think about exposing more of the API to the user, especially more transforms
-- Distributed Memory: This version does not yet support the functionality for
-real distributed memory. This means that the FFTW's `alloc_local` functions are
-not yet available. Implementing this will be especially useful when the
-multidimensional transforms get implemented.
 
 ## License
 
- Copyright 2020, Philipp Stanner, `<stanner@posteo.de>`
+ Copyright 2020, 2021 Philipp Stanner, `<stanner@posteo.de>`
 
  This program is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
