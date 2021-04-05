@@ -128,6 +128,51 @@ Init will initialize the FFTW and, if compiled with it, the MPI. Only when using
 MPI you need to pass sys.argv, otherwise you could pass an empty list `[]`.
 It is, however, recommended to always pass `sys.argv`
 
+#### import\_system\_wisdom
+
+`minifftw.import_system_wisdom()`
+
+*Parameters:* None
+
+*Returns:* None
+
+Tries to import the system wisdom. Broadcasts it to the other processes when
+using the MPI version.
+
+Either rises an exception in case of an error or silently ignores the error (MPI).
+
+#### import\_wisdom
+
+`minifftw.import_wisdom(string_path_to_wisdom)`
+
+*Parameters:*
+
+- string\_path\_to\_wisdom: String-path specifying the file to import wisdom from.
+
+*Returns:* None.
+
+Tries to import wisdom from the specified filename. Either rises an exception
+in case of an error, or silently ignores the error (MPI).
+
+If build with MPI, this function also distributes the wisdom to all processes.
+
+
+#### export\_wisdom
+
+`minifftw.export_wisdom(string_path_to_store_to)`
+
+*Parameters:*
+
+- string\_path\_to\_store\_to: String-path specifying the file to store wisdom
+to.
+
+*Returns:* None.
+
+Creates or overwrites the wisdom-file where the argument path points to.
+Either rises an exception in case of an error, or silently ignores the error (MPI).
+
+If build with MPI, this function gathers wisdom from all processes before storing.
+
 
 #### plan\_dft\_1d
 
