@@ -42,6 +42,37 @@ emulate the behavior of a pure MPI-FFTW.
 Therefore, the great advantage is that you can use mfftw the same way for both
 with and without MPI.
 
+## TL;DR
+
+### Advantages
+
+- easy to use
+- can run with or without MPI with 0 changes necessary in your python code
+- Uses FFTW's actual MPI routines instead of serial FFTW + manual MPI
+- intended for "small" arrays (~2 billion complex numbers) which get fourier
+  transformed very often.
+- Always works directly on the memory of the passed Numpy arrays, "almost"
+  no memory allocation behind the scenes.
+- Behaves exactly like the real FFTW, when used in serial mode.
+- Is the only (?) python FFTW wrapper which allows you to use FFTW with MPI to
+  distribute calculation effort, without you, the programmer, having to care
+  about manually rebuilding your array.
+
+
+### Disadvantages
+
+- This library is hacky: Each MPI process will contain the same array,
+  therefore wasting memory. Only process with ID 0 will generate valid output,
+  since it's the only one who posesses the whole valid array all the time.
+- Therefore, maximum array size is limited to a Node's maximum array. This
+  wrapper can't do 'actual' distributed memory with gigantic arrays several TB
+  large.
+- In MPI mode, the mfftw distributes slices of process 0's array to the worker
+  processes via MPI - distributing those slices before executing and collecting
+  the results after executing. This might become a bottleneck in simulations.
+- In MPI mode, each process has a comparatively small local array to work on,
+  next to the passed numpy arrays. (Is going to get fixed in a future release.)
+
 
 ## Project Status
 
@@ -413,8 +444,26 @@ FFTW gain performance. To enable this mode, pass `minifftw.FFTW_DESTROY_INPUT`
 as a flag in the plan creation functions.
 
 
+## Issues
+
+### Building
+
+Calling `make mpi` might create a shared object which was not linked to MPI
+properly. Reason: Python toolchain sometimes ignores command to build with
+`mpicc`. Seems to be caused by python toolchain wanting to execute the last
+build step with the same compiler the interpreter was build with.
+
+Work-around: Copy the last build command printed to stdout and replace i.e.
+`gcc` with `mpicc`.
+
+._.
+
+
+
 ## TODO
 
+- Make local slice arrays obsolete.
+- Build process: Port to meson.
 - Think about exposing more of the API to the user, especially more transforms
 
 ## License
