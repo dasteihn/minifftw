@@ -183,7 +183,7 @@ If build with MPI, this function gathers wisdom from all processes before storin
 - input\_array: One dimensional Numpy-Array with dtype=numpy.complex128
 - output\_array: One dimensional Numpy-Array with dtype=numpy.complex128
 - direction: Either `minifftw.FFTW_FORWARD` or `minifftw.FFTW_BACKWARD`
-- flags: FFTW flags
+- flags: FFTW flags, bitwise OR-interwined
 
 Available flags are:
 
