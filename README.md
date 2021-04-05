@@ -242,7 +242,7 @@ environment and pass it to the MPI\_Init() function. Also, this function will
 configure the number of threads the FFTW uses to heat up your machine.
 
 **Like in pure C-FFTW, it's very important to initialize your array with your
-real payload data _after_ creating the plan.**
+actual payload data _after_ creating the plan.**
 
 The plan function will prepare everything the FFTW needs to operate and pack
 it into a python-capsule, which later has to be passed to all following
