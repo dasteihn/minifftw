@@ -231,10 +231,14 @@ Note that the underlying FFTW function uses `int` to indicate the array's size,
 therefore, on most platforms, you'll be limited to a maximum array size of
 `2^31 - 1` (roughly two billion) complex numbers.
 
-**Be also aware** that the underlying FFTW-plan-function might overwrite your
+*Be also aware* that the underlying FFTW-plan-function might overwrite your
 arrays contents during planing. Therefore, you should initialize the array
 with the actual payload after this function (and all other plan-functions
 working on the same array) has returned.
+
+*And, last but not least:* As with C-FFTW, do not resize the (numpy) arrays
+after creating a plan on them, except when you delete the plan before doing so.
+Otherwise, undefined behavior might occur.
 
 
 #### execute
