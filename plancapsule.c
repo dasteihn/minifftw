@@ -123,7 +123,5 @@ mfftw_unwrap_capsule(PyObject *mplan)
 		return NULL;
 	}
 
-	puts("GetPointer...");
-
 	return (struct mfftw_plan *)PyCapsule_GetPointer(mplan, NULL);
 }

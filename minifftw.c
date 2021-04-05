@@ -98,15 +98,6 @@ prepare_mfftw_mpi_info(long long array_len, int direction, int flags)
 	MPI_Comm_size(MPI_COMM_WORLD, &nr_of_procs);
 	info->procmap.nr_of_procs = nr_of_procs;
 
-	if (rank == 1) {
-		printf("I'm the slave and have this data:\t");
-		printf("%llu %llu %llu %llu", info->arrmeta.local_ni,
-				info->arrmeta.local_i_start,
-				info->arrmeta.local_no,
-				info->arrmeta.local_o_start);
-
-	}
-
 	return info;
 
 err_out:
@@ -125,16 +116,11 @@ receive_subinfo(struct array_meta *meta, int rank)
 	ret = MPI_Recv(arrmeta, 5, MPI_UNSIGNED_LONG_LONG, rank, 0,
 			MPI_COMM_WORLD, &stat);
 
-	for (int i = 0; i < 5; i++)
-		printf("Received: %lu\n", arrmeta[i]);
-
 	meta->local = arrmeta[0];
 	meta->local_ni = arrmeta[1];
 	meta->local_i_start = arrmeta[2];
 	meta->local_no = arrmeta[3];
 	meta->local_o_start = arrmeta[4];
-
-	printf("Stored: %lu\n", meta->local_ni);
 
 	return ret;
 }
@@ -244,13 +230,11 @@ plan_dft_1d_mpi(PyObject *self, PyObject *args)
 		return NULL;
 	}
 
-	puts("syncing map");
 	if (synchronize_process_map(info) != 0) {
 		cleanup_mfftw_mpi_info(info);
 		PyErr_SetString(Mfftw_error, "Could not synchronize MPI map.");
 		return NULL;
 	}
-	puts("synced map");
 
 	/*
 	 * COMM_WORLD means: All existing MPI-tasks will participate in calculating.
@@ -258,8 +242,6 @@ plan_dft_1d_mpi(PyObject *self, PyObject *args)
 	plan = fftw_mpi_plan_dft_1d(array_len,
 			info->local_slice, info->local_slice,
 			MPI_COMM_WORLD, direction, flags);
-
-	printf("local slice 1 addr: %p\n", info->local_slice);
 
 	if (!plan) {
 		cleanup_mfftw_mpi_info(info);
@@ -453,28 +435,17 @@ export_wisdom(PyObject *self, PyObject *args)
 static int
 transmit_payload(int rank, fftw_complex *arr, size_t size)
 {
-	int ret;
-	printf("trying to transmit %u elements to %i\n", size, rank);
-	ret = MPI_Send(arr, size, MPI_C_DOUBLE_COMPLEX, rank, 0, MPI_COMM_WORLD);
-	if (ret == 0)
-		puts("successfully transmitted.");
-
-	return ret;
+	return MPI_Send(arr, size, MPI_C_DOUBLE_COMPLEX, rank, 0, MPI_COMM_WORLD);
 }
 
 
 static int
 receive_payload(int rank, fftw_complex *arr, size_t size)
 {
-	int ret;
 	MPI_Status stat;
 
-	ret = MPI_Recv(arr, size, MPI_C_DOUBLE_COMPLEX, rank,
+	return MPI_Recv(arr, size, MPI_C_DOUBLE_COMPLEX, rank,
 			0, MPI_COMM_WORLD, &stat);
-	if (ret == 0)
-		puts("successfully received.");
-
-	return ret;
 }
 
 
@@ -499,14 +470,10 @@ distribute_all_payloads(struct mfftw_plan *plan)
 
 	in_arr = reinterpret_numpy_to_fftw_arr(plan->in_arr);
 
-	printf("Moving %lu elements from head.\n", plan->info->arrmeta.local_ni);
 	/* Lehnsherr has to copy his own stuff as well */
 	memcpy(plan->info->local_slice,
 			&in_arr[plan->info->arrmeta.local_i_start],
 			plan->info->arrmeta.local_ni * sizeof(fftw_complex));
-
-	printf("Trying to distribute to %u\n",
-			plan->info->procmap.nr_of_procs - 1);
 
 	for (i = 1; i < plan->info->procmap.nr_of_procs; i++) {
 		tmp_info = &plan->info->procmap.infos[i];
@@ -517,9 +484,6 @@ distribute_all_payloads(struct mfftw_plan *plan)
 		if (ret != 0)
 			break;
 	}
-
-	if (ret == 0)
-		puts("successfully distributed all payloads.");
 
 	return ret;
 }
@@ -545,7 +509,6 @@ collect_all_payloads(struct mfftw_plan *plan)
 
 	out_arr = reinterpret_numpy_to_fftw_arr(plan->out_arr);
 
-	printf("Moving %lu elements to head.\n", plan->info->arrmeta.local_no);
 	/* Lehnsherr has to copy his own result as well. */
 	memcpy(&out_arr[plan->info->arrmeta.local_o_start],
 			plan->info->local_slice,
@@ -554,9 +517,7 @@ collect_all_payloads(struct mfftw_plan *plan)
 	for (i = 1; i < plan->info->procmap.nr_of_procs; i++) {
 		tmp_info = &plan->info->procmap.infos[i];
 		tmp_o_start = tmp_info->arrmeta.local_o_start;
-		printf("storing shit at %lu\n", tmp_o_start);
 		tmp_no = tmp_info->arrmeta.local_no;
-		printf("nr of elms to store at shit: %lu\n", tmp_no);
 
 		ret = receive_payload(i, &out_arr[tmp_o_start], tmp_no);
 		if (ret != 0)
@@ -579,11 +540,9 @@ execute(PyObject *self, PyObject *args)
 	if (success == 0 || !plancapsule)
 		return NULL;
 
-	puts("unwrapping capsule");
 	mplan = mfftw_unwrap_capsule(plancapsule);
 	if (!mplan)
 		return NULL;
-	puts("unwrapped capsule");
 
 	/*
 	int rank;
@@ -599,19 +558,15 @@ execute(PyObject *self, PyObject *args)
 //		debug_array_print(mplan);
 
 #ifdef MFFTW_MPI
-	puts("NO");
 	if (mplan->info->rank == 0)
 		distribute_all_payloads(mplan);
 	else
 		collect_one_payload(mplan);
 #endif
 
-	printf("fftw: %i executing.\n", mplan->info ? mplan->info->rank : 0);
 	fftw_execute(mplan->plan);
-	printf("fftw: %i executed.\n", mplan->info ? mplan->info->rank : 0);
 
 #ifdef MFFTW_MPI
-	puts("NO");
 	if (mplan->info->rank == 0)
 		collect_all_payloads(mplan);
 	else
