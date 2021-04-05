@@ -22,17 +22,16 @@ nr_of_threads = 1
 m.init(sys.argv, nr_of_threads)
 
 data_in = np.zeros(data_len) + np.zeros(data_len) * 1j
-data_out = data_in.copy()
 
 #print(data_in)
-p_fwd = m.plan_dft_1d(data_in, data_out, m.FFTW_FORWARD, m.FFTW_ESTIMATE);
-p_bwd = m.plan_dft_1d(data_out, data_in, m.FFTW_BACKWARD, m.FFTW_ESTIMATE);
+p_fwd = m.plan_dft_1d(data_in, data_in, m.FFTW_FORWARD, m.FFTW_ESTIMATE);
+p_bwd = m.plan_dft_1d(data_in, data_in, m.FFTW_BACKWARD, m.FFTW_ESTIMATE);
 
 for i in range(0, len(data_in)):
     data_in[i] = i + i*1j
 data_orig = data_in.copy()
 
-for i in range(0, 1000):
+for i in range(0, 100):
     m.execute(p_fwd)
     m.execute(p_bwd)
     data_in /= data_len
