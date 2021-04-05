@@ -139,7 +139,6 @@ collect_mfftw_mpi_infos(struct mfftw_mpi_info *info)
 	/* This is us, process 0 */
 	memcpy(&tmp[0], info, sizeof(struct mfftw_mpi_info));
 
-	// TODO iterationsgrenze?
 	for (rank = 1; rank < info->procmap.nr_of_procs; rank++) {
 		ret = receive_subinfo(&tmp[rank].arrmeta, rank);
 		if (ret != 0)
@@ -216,14 +215,6 @@ plan_dft_1d_mpi(PyObject *self, PyObject *args)
 		return NULL;
 	}
 	
-	// TODO debug foo. Remove
-	/*
-	mfftw_in_arr = reinterpret_numpy_to_fftw_arr(py_in_arr);
-	mfftw_out_arr = reinterpret_numpy_to_fftw_arr(py_out_arr);
-	memset(mfftw_in_arr, 0, array_len * sizeof(fftw_complex));
-	memset(mfftw_out_arr, 0, array_len * sizeof(fftw_complex));
-	*/
-
 	info = prepare_mfftw_mpi_info(array_len, direction, flags);
 	if (!info) {
 		PyErr_SetString(Mfftw_error, "Could not prepare local info.");
@@ -464,7 +455,6 @@ distribute_all_payloads(struct mfftw_plan *plan)
 {
 	int i, ret = 0;
 	struct mfftw_mpi_info *tmp_info;
-	// TODO: Do something smarter
 	size_t tmp_i_start, tmp_ni;
 	fftw_complex *in_arr;
 
@@ -544,19 +534,6 @@ execute(PyObject *self, PyObject *args)
 	if (!mplan)
 		return NULL;
 
-	/*
-	int rank;
-	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-
-	if (rank == 1) {
-		//debug_array_print(mplan);
-		debug_fftw_array_print(mplan->info->local_slice,
-				mplan->info->arrmeta.local_ni);
-	}
-	*/
-//	if (rank == 1)
-//		debug_array_print(mplan);
-
 #ifdef MFFTW_MPI
 	if (mplan->info->rank == 0)
 		distribute_all_payloads(mplan);
@@ -572,18 +549,6 @@ execute(PyObject *self, PyObject *args)
 	else
 		distribute_one_payload(mplan);
 #endif
-	/*
-	if (rank == 0) {
-		//debug_array_print(mplan);
-		debug_array_print(mplan);
-	}
-	if (rank == 1) {
-		sleep(2);
-		//debug_array_print(mplan);
-		debug_fftw_array_print(mplan->info->local_slice,
-				mplan->info->arrmeta.local_ni);
-	}
-	*/
 
 	Py_INCREF(mplan->out_arr);
 	return (PyObject *)(mplan->out_arr);
