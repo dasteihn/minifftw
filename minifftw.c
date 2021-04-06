@@ -196,7 +196,6 @@ synchronize_process_map(struct mfftw_mpi_info *info)
 static PyObject *
 plan_dft_1d_mpi(PyObject *self, PyObject *args)
 {
-	fftw_complex *mfftw_in_arr, *mfftw_out_arr;
 	struct mfftw_mpi_info *info = NULL;
 	PyObject *tmp1 = NULL, *tmp2 = NULL;
 	fftw_plan plan;
