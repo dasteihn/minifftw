@@ -56,24 +56,23 @@ with and without MPI.
 - Calls FFTW and MPI methods mostly directly on the numpy arrays, should
   therefore be quite performant.
 - Behaves exactly like the real FFTW, when used in serial mode.
-- Is the only (?) python FFTW wrapper which allows you to use FFTW with MPI to
+- Is the only (?) Python FFTW wrapper which allows you to use FFTW with MPI to
   distribute calculation effort, without you, the programmer, having to care
   about manually rebuilding your array.
 
 
 ### Disadvantages
 
-- This library is hacky: Each MPI process will contain the same array,
-  therefore wasting memory. Only process with ID 0 will generate valid output,
-  since it's the only one who posesses the whole valid array all the time.
-- Therefore, maximum array size is limited to a Node's maximum array. This
-  wrapper can't do 'actual' distributed memory with gigantic arrays several TB
-  large.
+- This library is hacky: Each MPI process will contain the same array shortly
+  after startup, therefore wasting memory. Only process with ID 0 will generate
+  valid output, since it's the only one who posesses the whole valid array all
+  the time.
+- Therefore, maximum array size is limited to a Node's maximum RAM – even if
+  you'd get rid if the 2^31 limit. This wrapper can't do 'actual' distributed
+  memory with gigantic arrays several TB large.
 - In MPI mode, the mfftw distributes slices of process 0's array to the worker
-  processes via MPI - distributing those slices before executing and collecting
-  the results after executing. This might become a bottleneck in simulations.
-- In MPI mode, each process has a comparatively small local array to work on,
-  next to the passed numpy arrays. (Is going to get fixed in a future release.)
+  processes via MPI - distributing those slices before execution and collecting
+  the results after execution. This might become a bottleneck in simulations.
 
 
 ## Project Status
@@ -414,7 +413,7 @@ Tasks can be started as usual either with
 mpiexec -np <N> python3 my_minifftw_simulation.py
 ```
 
-or with a cluster manager (i.g. slurm) of your choice.
+or with a cluster manager (i.e. slurm) of your choice.
 
 
 #### Performance
@@ -475,7 +474,6 @@ Reason unknown.
 
 ## TODO
 
-- Make local slice arrays obsolete.
 - Think about exposing more of the API to the user, especially more transforms
 
 ## License
