@@ -464,6 +464,14 @@ as a flag in the plan creation functions.
 
 ## Issues
 
+### Wisdom
+
+There is a problem when rising exceptions in MPI mode if wisdom can not be
+imported: Only the importing process (Lehnsherr) would raise the exception,
+in which case the other processes would block forever waiting for answer.
+Therefore, currently, no exception is raised in MPI mode when wisdom import or
+export fails.
+
 ### Finalizing
 
 `minifftw.finit()` in combination with MPI sometimes seems to cause processes
