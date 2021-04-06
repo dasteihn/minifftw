@@ -450,7 +450,7 @@ as a flag in the plan creation functions.
 
 ## Issues
 
-### Building
+### Build
 
 Calling `make mpi` might create a shared object which was not linked to MPI
 properly. Reason: Python toolchain sometimes ignores command to build with
@@ -460,7 +460,12 @@ build step with the same compiler the interpreter was build with.
 Work-around: Copy the last build command printed to stdout and replace i.e.
 `gcc` with `mpicc`.
 
-._.
+
+### Finalizing
+
+`minifftw.finit()` in combination with MPI sometimes seems to cause processes
+to hang temporarily. Including a `sleep(1)` before 'fixes' the issue.
+Reason unknown.
 
 
 
