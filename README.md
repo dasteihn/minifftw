@@ -53,6 +53,8 @@ with and without MPI.
   transformed very often.
 - Always works directly on the memory of the passed Numpy arrays, "almost"
   no memory allocation behind the scenes.
+- Calls FFTW and MPI methods mostly directly on the numpy arrays, should
+  therefore be quite performant.
 - Behaves exactly like the real FFTW, when used in serial mode.
 - Is the only (?) python FFTW wrapper which allows you to use FFTW with MPI to
   distribute calculation effort, without you, the programmer, having to care
