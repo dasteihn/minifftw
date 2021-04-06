@@ -44,12 +44,11 @@ mfftw_destroy_capsule(PyObject *capsule)
 
 	/* When MPI is not used, this is NULL */
 	if (plan->info) {
-		free(plan->info->local_slice);
-		free(plan->info);
-
 		/* Only process 0 has allocated something here. */
 		if (plan->info->rank == 0)
 			free(plan->info->procmap.infos);
+
+		free(plan->info);
 	}
 
 	free(plan);
