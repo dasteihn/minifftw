@@ -78,11 +78,14 @@ with and without MPI.
 
 ## Project Status
 
-This project is work in progress and currently in beta state.
-In my tests it computes valid results. Though you'd might want to check for
-yourself before using it.
+According to tests on AMD64 on Debian and Arch Linux, mfftw generates valid
+results. Therefore the project is judged to be ready for productive use.
 
-The API will most likely remain stable, though functions' behavior might change.
+Run the test `sanity.py` with parameters of your choice to check behavior on
+your system. The script should be self explaining ;)
+
+The API will most likely remain stable, though minor changes in a functions
+behavior might get implemented.
 
 ### Implemented FFTW functionality
 
