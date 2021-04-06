@@ -64,9 +64,6 @@ cleanup_mfftw_mpi_info(struct mfftw_mpi_info *info)
 	if (!info)
 		return;
 
-	if (info->local_slice)
-		free(info->local_slice);
-
 	memset(info, 0, sizeof(struct mfftw_mpi_info));
 	free(info);
 }
@@ -87,11 +84,6 @@ prepare_mfftw_mpi_info(long long array_len, int direction, int flags)
 		&info->arrmeta.local_i_start, &info->arrmeta.local_no,
 		&info->arrmeta.local_o_start);
 
-	info->local_slice = fftw_alloc_complex(info->arrmeta.local);
-	if (!info->local_slice)
-		goto err_out;
-	memset(info->local_slice, 0, info->arrmeta.local);
-
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 	info->rank = rank;
 
@@ -99,10 +91,6 @@ prepare_mfftw_mpi_info(long long array_len, int direction, int flags)
 	info->procmap.nr_of_procs = nr_of_procs;
 
 	return info;
-
-err_out:
-	free(info);
-	return NULL;
 }
 
 
@@ -199,6 +187,7 @@ plan_dft_1d_mpi(PyObject *self, PyObject *args)
 	struct mfftw_mpi_info *info = NULL;
 	PyObject *tmp1 = NULL, *tmp2 = NULL;
 	fftw_plan plan;
+	fftw_complex *mfftw_in_arr = NULL, *mfftw_out_arr = NULL;
 	PyArrayObject *py_in_arr = NULL, *py_out_arr = NULL;
 	long long array_len = 0;
 	int success = 0, direction, flags;
@@ -226,11 +215,14 @@ plan_dft_1d_mpi(PyObject *self, PyObject *args)
 		return NULL;
 	}
 
+	mfftw_in_arr = reinterpret_numpy_to_fftw_arr(py_in_arr);
+	mfftw_out_arr = reinterpret_numpy_to_fftw_arr(py_out_arr);
+
 	/*
 	 * COMM_WORLD means: All existing MPI-tasks will participate in calculating.
 	 */
 	plan = fftw_mpi_plan_dft_1d(array_len,
-			info->local_slice, info->local_slice,
+			mfftw_in_arr, mfftw_out_arr,
 			MPI_COMM_WORLD, direction, flags);
 
 	if (!plan) {
@@ -443,8 +435,9 @@ receive_payload(int rank, fftw_complex *arr, size_t size)
 static int
 distribute_one_payload(struct mfftw_plan *plan)
 {
-	return transmit_payload(0, plan->info->local_slice,
-			plan->info->arrmeta.local_no);
+	fftw_complex *arr = reinterpret_numpy_to_fftw_arr(plan->out_arr);
+
+	return transmit_payload(0, arr, plan->info->arrmeta.local_no);
 }
 
 
@@ -458,11 +451,6 @@ distribute_all_payloads(struct mfftw_plan *plan)
 	fftw_complex *in_arr;
 
 	in_arr = reinterpret_numpy_to_fftw_arr(plan->in_arr);
-
-	/* Lehnsherr has to copy his own stuff as well */
-	memcpy(plan->info->local_slice,
-			&in_arr[plan->info->arrmeta.local_i_start],
-			plan->info->arrmeta.local_ni * sizeof(fftw_complex));
 
 	for (i = 1; i < plan->info->procmap.nr_of_procs; i++) {
 		tmp_info = &plan->info->procmap.infos[i];
@@ -482,8 +470,9 @@ distribute_all_payloads(struct mfftw_plan *plan)
 static int
 collect_one_payload(struct mfftw_plan *plan)
 {
-	return receive_payload(0, plan->info->local_slice,
-			plan->info->arrmeta.local_ni);
+	fftw_complex *arr = reinterpret_numpy_to_fftw_arr(plan->in_arr);
+
+	return receive_payload(0, arr, plan->info->arrmeta.local_ni);
 }
 
 
@@ -497,11 +486,6 @@ collect_all_payloads(struct mfftw_plan *plan)
 	fftw_complex *out_arr;
 
 	out_arr = reinterpret_numpy_to_fftw_arr(plan->out_arr);
-
-	/* Lehnsherr has to copy his own result as well. */
-	memcpy(&out_arr[plan->info->arrmeta.local_o_start],
-			plan->info->local_slice,
-			plan->info->arrmeta.local_no * sizeof(fftw_complex));
 
 	for (i = 1; i < plan->info->procmap.nr_of_procs; i++) {
 		tmp_info = &plan->info->procmap.infos[i];

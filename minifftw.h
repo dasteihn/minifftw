@@ -58,7 +58,6 @@ struct process_map {
 struct mfftw_mpi_info {
 	int rank;
 	struct array_meta arrmeta;
-	fftw_complex *local_slice;
 	struct process_map procmap;
 };
 
