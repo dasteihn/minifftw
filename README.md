@@ -58,7 +58,8 @@ with and without MPI.
 - Behaves exactly like the real FFTW, when used in serial mode.
 - Is the only (?) Python FFTW wrapper which allows you to use FFTW with MPI to
   distribute calculation effort, without you, the programmer, having to care
-  about manually rebuilding your array.
+  in any way about MPI. The API behaves exactly the same from your program's view
+  for both serial and MPI version.
 
 
 ### Disadvantages
