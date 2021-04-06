@@ -108,6 +108,7 @@ On your system, you'll need the following components:
 - fftw3\_mpi C-library with header files
 - Numpy C-header files
 - MPI implementation (i.e. openMPI) with header files
+- meson and ninja
 
 OpenMP (without 'I') is **not** required, as this wrapper uses the FFTW with
 POSIX threads.
@@ -117,6 +118,7 @@ On a typical linux distro, the required packages might be called:
 - libfftw3-mpi-dev
 - python3-numpy
 - libopenmpi-dev
+- meson
 
 
 ## Building
@@ -125,6 +127,7 @@ On a typical linux distro, the required packages might be called:
 
 - `make normal` for a wrapper around the serial FFTW
 - `make mpi` for a wrapper around the MPI-FFTW
+
 
 ### Linux Clusters
 
@@ -135,6 +138,9 @@ getting the wrapper to run on your target.
 To build, run from the main folder:
 
 `make <cluster>` or `make <cluster>-mpi`
+
+(Building on clusters might be rather complicated. We have not yet tried meson
+support).
 
 
 ## Usage
@@ -422,6 +428,10 @@ documented for the FFTW will mostly also apply to this wrapper. For instance,
 the planner-functions will overwrite your input array with arbitrary data, so
 you should fill them with your payload once planing is completed.
 
+BTW: If you should accidentally build the non-MPI version and run it, you won't
+see an error when running your program with mpiexec. You'd just end up spawning
+the same process several times, without any of them MPI-interacting.
+
 #### Plan Capsules
 
 `mfftw.plan_XXX` returns a python capsule (opaque data) which encapsulates
@@ -450,17 +460,6 @@ as a flag in the plan creation functions.
 
 ## Issues
 
-### Build
-
-Calling `make mpi` might create a shared object which was not linked to MPI
-properly. Reason: Python toolchain sometimes ignores command to build with
-`mpicc`. Seems to be caused by python toolchain wanting to execute the last
-build step with the same compiler the interpreter was build with.
-
-Work-around: Copy the last build command printed to stdout and replace i.e.
-`gcc` with `mpicc`.
-
-
 ### Finalizing
 
 `minifftw.finit()` in combination with MPI sometimes seems to cause processes
@@ -472,7 +471,6 @@ Reason unknown.
 ## TODO
 
 - Make local slice arrays obsolete.
-- Build process: Port to meson.
 - Think about exposing more of the API to the user, especially more transforms
 
 ## License
