@@ -372,12 +372,13 @@ Imagine you have an array of 4 million entries. You start your simulation on
 2. When executing a plan the process with ID 0 (Lehnsherr) will transmit 1
    million entries of his own array to every one of the 3 remaining processes,
    and he will keep the remaining one million entries for himself.
-3. Each processes (including Lehnsherr) will copy the 1M entries to another local
-	array (not visible for the python world) on which the FFTs will be executed.
-4. After execution, the local copy is send back to the original input array of
+3. Each process will receive the slice into its own (numpy) array. The FFTW will
+	operate on this slice.
+4. After execution, the local slice is send back to the original input array of
 	Lehnsherr, who keeps track which Lehnsmann process got which slice in
 	the first place.
-5. After an execution, therefore, only process with rank 0 has a valid array.
+5. After an execution, therefore, only the process with rank 0 has a valid array.
+6. If desired, execute another or the same plan again on the new result array.
 
 **You can execute as often as you want, but only the Rank 0 process will have
 valid data in the end.**
@@ -394,7 +395,7 @@ if mfftw.get_mpi_rank() == 0:
 ### MPI Usage
 
 Once the MPI wrapper is build for your target, there are only a few things to
-keep in mind, which mostly do have to do with MPI itself, not the wrapper.
+keep in mind, which mostly have to do with MPI itself, not the wrapper.
 
 #### No Problems
 
@@ -403,10 +404,13 @@ python code.
 
 For example, `import_wisdom` will check if the calling process has
 MPI rank 0. If it does, it will import the wisdom and broadcast it to your other
-processes.
+processes. Therefore you usually don't have to check your rank, except when
+storing or printing a result array.
+
+*Especially, do not call MiniFFTW functions wrapped into rank checks.*
+
 
 #### Usage
-
 
 Tasks can be started as usual either with
 

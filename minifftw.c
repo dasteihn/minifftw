@@ -466,7 +466,7 @@ distribute_all_payloads(struct mfftw_plan *plan)
 }
 
 
-/* Untertanen receive one slice from meister. */
+/* Lehnsmaenner receive from Lehnsherr */
 static int
 collect_one_payload(struct mfftw_plan *plan)
 {
