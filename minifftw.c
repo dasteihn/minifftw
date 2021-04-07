@@ -23,6 +23,8 @@
 #define PY_ARRAY_UNIQUE_SYMBOL mfftw_ARRAY_API
 #include <numpy/arrayobject.h>
 
+#include <sys/time.h> // TODO remove
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -503,9 +505,24 @@ collect_all_payloads(struct mfftw_plan *plan)
 #endif /* MFFTW_MPI */
 
 
+static long
+delta(struct timeval *start, struct timeval *end)
+{
+	long total_end = 0, total_start = 0;
+
+	total_start = start->tv_sec * 1L * 1000 * 1000;
+	total_start += start->tv_usec;
+
+	total_end = end->tv_sec * 1L * 1000 * 1000;
+	total_end += end->tv_usec;
+
+	return total_end - total_start;
+}
+
 static PyObject *
 execute(PyObject *self, PyObject *args)
 {
+	struct timeval start, end;
 	struct mfftw_plan *mplan = NULL;
 	PyObject *plancapsule = NULL;
 	/* mfftw_unwrap will check the type */
@@ -518,13 +535,22 @@ execute(PyObject *self, PyObject *args)
 		return NULL;
 
 #ifdef MFFTW_MPI
-	if (mplan->info->rank == 0)
+	gettimeofday(&start, NULL);
+	if (mplan->info->rank == 0) {
 		distribute_all_payloads(mplan);
-	else
+	} else
 		collect_one_payload(mplan);
-#endif
 
+	gettimeofday(&end, NULL);
+	printf("%i took %li for distributing.\n", mplan->info->rank,
+			delta(&start, &end));
+
+#endif
+	gettimeofday(&start, NULL);
 	fftw_execute(mplan->plan);
+	gettimeofday(&end, NULL);
+	printf("%i took %li for executing.\n", mplan->info->rank,
+			delta(&start, &end));
 
 #ifdef MFFTW_MPI
 	if (mplan->info->rank == 0)
