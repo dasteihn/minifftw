@@ -44,10 +44,7 @@ mfftw_destroy_capsule(PyObject *capsule)
 
 	/* When MPI is not used, this is NULL */
 	if (plan->info) {
-		/* Only process 0 has allocated something here. */
-		if (plan->info->rank == 0)
-			free(plan->info->procmap.infos);
-
+		free(plan->info->arrmeta);
 		free(plan->info);
 	}
 
