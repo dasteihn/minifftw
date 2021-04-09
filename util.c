@@ -24,7 +24,6 @@
 #include <numpy/arrayobject.h>
 
 #include "minifftw.h"
-#include <stdbool.h>
 
 /*
  * ========================= Environment ======================================
@@ -123,6 +122,22 @@ check_array_and_get_length(PyArrayObject *arr)
 
 /* ============================== Debugging ================================= */
 
+/*
+static long
+delta(struct timeval *start, struct timeval *end)
+{
+	long total_end = 0, total_start = 0;
+
+	total_start = start->tv_sec * 1L * 1000 * 1000;
+	total_start += start->tv_usec;
+
+	total_end = end->tv_sec * 1L * 1000 * 1000;
+	total_end += end->tv_usec;
+
+	return total_end - total_start;
+}
+
+
 void
 print_complex_nr(fftw_complex nr)
 {
@@ -167,3 +182,4 @@ debug_array_print(struct mfftw_plan *mplan)
 
 	printf("\n");
 }
+*/
