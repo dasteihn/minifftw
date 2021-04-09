@@ -74,6 +74,8 @@ with and without MPI.
 - In MPI mode, the mfftw distributes slices of process 0's array to the worker
   processes via MPI - distributing those slices before execution and collecting
   the results after execution. This might become a bottleneck in simulations.
+  However, the array is distributed or collected simultaneously to all processes
+  via the Gather and Scatter functions. So it should scale rather well.
 
 
 ## Project Status
@@ -360,9 +362,7 @@ use for end users.
 Transparently for the user, it distributes the Lehnsherr process's array to the
 Lehnsmann processes before executing, and collects the data again after executing.
 
-This might turn out to be a bottleneck on some systems, since process 0 might be
-busy with sending and receiving data a lot. On the other hand it completely frees
-the user from having to deal with MPI manually.
+On the other hand it completely frees the user from having to deal with MPI manually.
 
 *Example:*
 
@@ -469,6 +469,13 @@ as a flag in the plan creation functions.
 
 ## Issues
 
+### Scattering
+
+To be efficient, we use MPI\_Scatterv to collect data again. This works excellent, but would
+cause data failure if one process should ever have a local\_ni different from local\_no.
+As long as Minifftw only provides the 1dft, this should never occur. If it should occur, the
+user will receive a warning on stderr.
+
 ### Wisdom
 
 There is a problem when rising exceptions in MPI mode if wisdom can not be
@@ -483,6 +490,10 @@ export fails.
 to hang temporarily. Including a `sleep(1)` before 'fixes' the issue.
 Reason unknown.
 
+
+## Changelog
+
+v1.0.3: Resolve serial MPI\_Send bottleneck by using Scatterv and Gatterv
 
 
 ## TODO
