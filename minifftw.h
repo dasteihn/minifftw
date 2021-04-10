@@ -49,16 +49,10 @@ struct array_meta {
 };
 
 
-struct process_map {
-	int nr_of_procs;
-	struct mfftw_mpi_info *infos;
-};
-
-
 struct mfftw_mpi_info {
 	int rank;
-	struct array_meta arrmeta;
-	struct process_map procmap;
+	int nr_of_procs;
+	struct array_meta *arrmeta;
 };
 
 
