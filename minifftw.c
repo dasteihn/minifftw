@@ -405,7 +405,7 @@ collect_send_sizes(int sizes[], struct mfftw_mpi_info *info)
 	int i;
 
 	for (i = 0; i < info->nr_of_procs; i++)
-		sizes[i] = info->arrmeta[i].local_no;
+		sizes[i] = info->arrmeta[i].local_ni;
 }
 
 
@@ -415,7 +415,7 @@ collect_send_offsets(int offsets[], struct mfftw_mpi_info *info)
 	int i;
 
 	for (i = 0; i < info->nr_of_procs; i++)
-		offsets[i] = info->arrmeta[i].local_o_start;
+		offsets[i] = info->arrmeta[i].local_i_start;
 }
 
 
@@ -476,9 +476,9 @@ static int
 collect_payloads(struct mfftw_plan *plan)
 {
 	int ret = 0;
-	int local_n;
+	int local_no;
 	int *sizes, *offsets;
-	fftw_complex *in_arr, *out_arr;
+	fftw_complex *out_arr;
 
 	sizes = malloc(plan->info->nr_of_procs * sizeof(int));
 	if (!sizes)
@@ -490,20 +490,13 @@ collect_payloads(struct mfftw_plan *plan)
 		return -1;
 	}
 
+	local_no = plan->info->arrmeta[plan->info->rank].local_no;
 	collect_rec_sizes(sizes, plan->info);
 	collect_rec_offsets(offsets, plan->info);
 
-	in_arr = reinterpret_numpy_to_fftw_arr(plan->in_arr);
 	out_arr = reinterpret_numpy_to_fftw_arr(plan->out_arr);
 
-	local_n = plan->info->arrmeta[plan->info->rank].local_no;
-
-	if (local_n != plan->info->arrmeta[plan->info->rank].local_ni)
-		fprintf(stderr, "MFFTW: [W] Missalignement, broken data likely!\n");
-
-	/* FIXME: This is dangerous, because local_ni might be unequal local_no.
-	 * It might become necessary to allocate a temporary array for this. */
-	ret = MPI_Gatherv(out_arr, local_n, MPI_C_DOUBLE_COMPLEX, in_arr,
+	ret = MPI_Gatherv(out_arr, local_no, MPI_C_DOUBLE_COMPLEX, out_arr,
 			sizes, offsets, MPI_C_DOUBLE_COMPLEX, 0, MPI_COMM_WORLD);
 
 	free(sizes);
