@@ -19,7 +19,9 @@ def checker(a, b):
 
 data_len = int(2**18)
 nr_of_threads = 1
-m.init(sys.argv, nr_of_threads)
+flags = 0
+
+m.init(sys.argv, nr_of_threads, flags)
 
 data_in = np.zeros(data_len) + np.zeros(data_len) * 1j
 

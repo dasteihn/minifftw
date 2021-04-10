@@ -6,7 +6,7 @@ import random
 import minifftw as m
 
 data_len = 2048
-m.init(sys.argv, 4)
+m.init(sys.argv, 4, 0)
 
 try:
     m.import_wisdom("./my_wisdom")

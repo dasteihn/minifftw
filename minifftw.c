@@ -568,11 +568,11 @@ static PyObject *
 init(PyObject *self, PyObject *args)
 {
 	bool threads_ok = true;
-	int nr_of_threads = 4;
+	int nr_of_threads = 4, flags;
 	PyObject *argv_list = NULL;
 
-	int success = PyArg_ParseTuple(args, "O!i", &PyList_Type, &argv_list,
-			&nr_of_threads);
+	int success = PyArg_ParseTuple(args, "O!ii", &PyList_Type, &argv_list,
+			&nr_of_threads, &flags);
 	if (success == 0 || !argv_list)
 		return NULL;
 

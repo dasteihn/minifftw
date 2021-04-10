@@ -159,12 +159,15 @@ support).
 
 #### init
 
-`minifftw.init(sys.argv, nr_of_threads)`
+`minifftw.init(sys.argv, nr_of_threads, mfftw_flags)`
 
 *Parameters:*
 
 - sys.argv: List of strings
 - nr\_of\_threads: Integer indicating the desired nr of threads used by FFTW
+- mfftw\_flags: Bit-wise OR interined flags specifically for MiniFFTW.
+
+Available flags are: None.
 
 *Returns:* Py\_None
 
