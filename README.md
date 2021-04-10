@@ -472,13 +472,6 @@ as a flag in the plan creation functions.
 
 ## Issues
 
-### Scattering
-
-To be efficient, we use MPI\_Scatterv to collect data again. This works excellent, but would
-cause data failure if one process should ever have a local\_ni different from local\_no.
-As long as Minifftw only provides the 1dft, this should never occur. If it should occur, the
-user will receive a warning on stderr.
-
 ### Wisdom
 
 There is a problem when rising exceptions in MPI mode if wisdom can not be
