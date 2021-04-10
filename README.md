@@ -240,6 +240,8 @@ Available flags are:
 - FFTW\_EXHAUSTIVE
 - FFTW\_WISDOM\_ONLY
 - FFTW\_DESTROY\_INPUT
+- FFTW\_PRESERVE\_INPUT
+- FFTW\_UNALIGNED
 
 *Returns:* minifftw-plancapsule (opaque data)
 
@@ -489,8 +491,8 @@ Reason unknown.
 
 ## Changelog
 
-v1.0.4: Add flags to init function, for later purposes.
-v1.0.3: Resolve serial MPI\_Send bottleneck by using Scatterv and Gatterv
+- v1.0.4: Add flags to init function, for later purposes.
+- v1.0.3: Resolve serial MPI\_Send bottleneck by using Scatterv and Gatterv
 
 
 ## TODO
