@@ -489,6 +489,7 @@ Reason unknown.
 
 ## Changelog
 
+v1.0.4: Add flags to init function, for later purposes.
 v1.0.3: Resolve serial MPI\_Send bottleneck by using Scatterv and Gatterv
 
 
