@@ -134,7 +134,7 @@ synchronize_process_map(struct mfftw_mpi_info *info)
 		return -1;
 
 	sndbuf = calloc(buflen, sizeof(unsigned long long));
-	if (!recbuf) {
+	if (!sndbuf) {
 		free(recbuf);
 		return -1;
 	}
