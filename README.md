@@ -1,9 +1,10 @@
 # Minimalistic MPI-FFTW
 
-Continuous array FFTs with MPI.
+Continuous array FFTs with MPI. Enables using MPI without changes to your python
+code.
 
 This is a minimalistic Pythonwrapper for the MPI-FFTW. As every human
-achievement, it is created out of hate for existing solutions.
+achievement, it is created out of dissatisfaction with existing solutions.
 
 Minimalistic means, that this wrapper will not wrapp every functionality the
 FFTW offers. Probably just the 1D transforms.
